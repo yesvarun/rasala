@@ -37,6 +37,7 @@
   --read-size:1.06rem;
   --read-face:var(--body);
   --read-align:left;
+  --read-hyph:manual;
   --pad:20px;
   --safe-t:env(safe-area-inset-top,0px);
   --safe-b:env(safe-area-inset-bottom,0px);
@@ -211,9 +212,11 @@ img{max-width:100%;display:block}
 .read__by{font-family:var(--util);font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;
   color:var(--ink-2);padding:11px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--rule);
   margin:0 0 26px}
-.read__body{font-family:var(--read-face);font-size:var(--read-size);line-height:1.62;text-align:var(--read-align);
-  hyphens:auto;-webkit-hyphens:auto}
-.read__body p{margin:0 0 1.05em}
+.read__body{font-family:var(--read-face);font-size:var(--read-size);line-height:1.62;
+  text-align:var(--read-align);hyphens:var(--read-hyph);-webkit-hyphens:var(--read-hyph);
+  overflow-wrap:break-word}
+.read__body p{margin:0 0 .95em}
+.read__body p:last-child{margin-bottom:0}
 .read__body p.lead::first-letter{
   font-family:var(--display);font-size:3.32em;line-height:.82;float:left;
   padding:.05em .09em 0 0;color:var(--red);
@@ -509,6 +512,25 @@ const DB = (()=>{
 
 /* ══ 1 · GEOMETRY ═══════════════════════════════════════════ */
 
+function pageGutters(raw, W){
+  const h=new Map();
+  for(const r of raw){ const k=Math.round(r.size*2)/2; if(k>=5&&k<=16) h.set(k,(h.get(k)||0)+r.s.length); }
+  let pb=10,bc=0; for(const [k,v] of h) if(v>bc){ bc=v; pb=k; }
+  const B=Math.max(64,Math.ceil(W))+2;
+  const occ=new Uint16Array(B+2);
+  for(const r of raw){
+    if(r.size>pb*1.3) continue;                       /* headlines span gutters */
+    const a=Math.max(0,Math.floor(r.x)), b=Math.min(B,Math.ceil(r.x+r.w));
+    for(let i=a;i<b;i++) occ[i]++;
+  }
+  const runs=[]; let st=-1;
+  for(let i=0;i<=B;i++){
+    if(i<B && occ[i]===0){ if(st<0) st=i; }
+    else { if(st>=0 && i-st>=6) runs.push([st,i]); st=-1; }
+  }
+  return runs.filter(r=> r[1]>W*0.06 && r[0]<W*0.94).map(r=>(r[0]+r[1])/2);
+}
+
 function textRuns(items, vp){
   const raw=[];
   for(const it of items){
@@ -520,6 +542,7 @@ function textRuns(items, vp){
     raw.push({s:it.str, x:m[4], y:m[5], w:it.width||0, size, f:it.fontName||""});
   }
   raw.sort((a,b)=> (a.y-b.y) || (a.x-b.x));
+  const cuts=pageGutters(raw, vp.width);
 
   /* bucket by baseline */
   const rows=[]; let cur=null;
@@ -534,8 +557,9 @@ function textRuns(items, vp){
     let run=[row.it[0]];
     for(let i=1;i<row.it.length;i++){
       const p=run[run.length-1], n=row.it[i];
-      const gap=n.x-(p.x+p.w);
-      if(gap > Math.max(p.size,n.size)*2.2) { out.push(mkLine(run)); run=[]; }
+      const gap=n.x-(p.x+p.w), pr=p.x+p.w;
+      const straddle=cuts.some(c=> pr<=c && c<=n.x);
+      if(straddle || gap > Math.max(p.size,n.size)*3.5) { out.push(mkLine(run)); run=[]; }
       run.push(n);
     }
     out.push(mkLine(run));
@@ -548,7 +572,7 @@ function mkLine(items){
   const sizes=items.map(i=>i.size);
   const size=median(sizes);
   const gaps=[]; for(let i=1;i<items.length;i++) gaps.push(items[i].x-(items[i-1].x+items[i-1].w));
-  let thr=size*0.17;
+  let thr=size*0.25;
   const shorts=items.filter(i=>i.s.trim().length<=2).length;
   if(items.length>=5 && shorts/items.length>0.55){       /* letter-spaced display type */
     const pos=gaps.filter(g=>g>0.05).sort((a,b)=>a-b);
@@ -561,7 +585,8 @@ function mkLine(items){
   let t=items[0].s;
   for(let i=1;i<items.length;i++){
     const g=items[i].x-(items[i-1].x+items[i-1].w);
-    t += (g>thr ? " " : "") + items[i].s;
+    const need = g>thr && !/\s$/.test(t) && !/^\s/.test(items[i].s);
+    t += (need ? " " : "") + items[i].s;
   }
   const last=items[items.length-1];
   const fonts=items.map(i=>i.f).join(" ");
@@ -672,16 +697,35 @@ function xycut(lines, minX, minY, depth, out){
 }
 
 /* ══ 4 · EDITORIAL — blocks, types, paragraphs ═════════════ */
-function makeBlock(lines, body){
-  lines.sort((a,b)=>a.y-b.y||a.x-b.x);
+function makeBlock(lines0, body){
+  lines0.sort((a,b)=>a.y-b.y||a.x-b.x);
+  /* fragments sitting on one baseline inside this block are one visual line */
+  const lines=[];
+  for(const l of lines0){
+    const p=lines[lines.length-1];
+    if(p && Math.abs(l.y-p.y)<=Math.max(1.2, Math.min(l.size,p.size)*0.45)){
+      p.text += (l.x-p.r > l.size*0.25 ? " " : "") + l.text;
+      p.r=Math.max(p.r,l.r);
+      p.bold=p.bold||l.bold; p.italic=p.italic||l.italic;
+      continue;
+    }
+    lines.push({text:l.text,x:l.x,r:l.r,y:l.y,size:l.size,bold:l.bold,italic:l.italic});
+  }
   const size=median(lines.map(l=>l.size));
   const left=Math.min(...lines.map(l=>l.x)), right=Math.max(...lines.map(l=>l.r));
-  const w=right-left;
+  /* modal left edge + median right edge — one stray line can't skew them */
+  const lm=new Map();
+  for(const l of lines){ const k=Math.round(l.x/2)*2; lm.set(k,(lm.get(k)||0)+1); }
+  let bodyLeft=left, bc=0;
+  for(const [k,v] of lm) if(v>bc){ bc=v; bodyLeft=k; }
+  const medRight=median(lines.map(l=>l.r));
+  const wid=Math.max(1, medRight-bodyLeft);
   const justified = lines.length>2 &&
-    lines.filter(l=>l.r>right-w*0.035).length/lines.length>0.62;
+    lines.filter(l=>l.r>medRight-wid*0.04).length/lines.length>0.62;
   const text=joinLines(lines);
   const b={
-    lines, size, left, right, top:lines[0].y-size, bottom:lines[lines.length-1].y,
+    lines, size, left, right, bodyLeft, wid,
+    top:lines[0].y-size, bottom:lines[lines.length-1].y,
     text, justified,
     bold:lines.filter(l=>l.bold).length>lines.length/2,
     italic:lines.filter(l=>l.italic).length>lines.length/2,
@@ -699,6 +743,16 @@ function joinLines(lines){
   }
   return norm(t).replace(/\u00AD/g,"");
 }
+function tidy(t){
+  return String(t||"")
+    .replace(/\u00AD/g,"")
+    .replace(/\s+/g," ")
+    .replace(/\s+([,.;:!?%’”\)\]])/g,"$1")
+    .replace(/([“\(\[])\s+/g,"$1")
+    .replace(/(\p{L})\s+’\s*(\p{L})/gu,"$1’$2")
+    .replace(/\s{2,}/g," ")
+    .trim();
+}
 function classify(b, body){
   const n=words(b.text), rel=b.size/body;
   if(b.text.length<=2 && rel>=2.2) return "drop";
@@ -714,10 +768,11 @@ function classify(b, body){
 }
 function splitParas(b){
   const L=b.lines, out=[]; let cur=[];
-  const w=b.right-b.left;
+  const left=b.bodyLeft, w=b.wid;
   for(let i=0;i<L.length;i++){
-    const indent = L[i].x-b.left > b.size*0.5;
-    const prevShort = b.justified && i>0 && L[i-1].r < b.left+w*0.9;
+    const d=L[i].x-left;
+    const indent = d > b.size*0.45 && d < b.size*4;   /* beyond 4em it is not an indent */
+    const prevShort = b.justified && i>0 && L[i-1].r < left+w*0.85;
     if(cur.length && (indent||prevShort)){ out.push(cur); cur=[]; }
     cur.push(L[i]);
   }
@@ -725,8 +780,8 @@ function splitParas(b){
   return out.map(joinLines).filter(t=>t.length>1);
 }
 
-function headsOf(pg, body){
-  const c=pg.blocks.filter(b=> b.type==="head" && b.top<pg.h*0.8 && words(b.text)>=2
+function headsOf(blocks, pg, body){
+  const c=blocks.filter(b=> b.type==="head" && b.top<pg.h*0.8 && words(b.text)>=2
       && b.text.length>=6 && !/^[\d.,%₹$\s+\-–—]+$/.test(b.text));
   if(!c.length) return [];
   const top=c.reduce((m,b)=> b.size>m.size?b:m, c[0]);
@@ -831,7 +886,7 @@ const Press = {
         let run=[g[0]];
         for(let k=1;k<g.length;k++){
           const m=median(run.map(q=>q.size));
-          if(!(g[k].size>=m*0.72 && g[k].size<=m*1.38)){ runs.push(run); run=[]; }
+          if(!(g[k].size>=m*0.62 && g[k].size<=m*1.6)){ runs.push(run); run=[]; }
           run.push(g[k]);
         }
         runs.push(run);
@@ -839,7 +894,9 @@ const Press = {
       pg.blocks=runs.filter(r=>r.length).map(g=>makeBlock(g, pg.body)).filter(b=>b.text.length>1);
       const display=pg.blocks.filter(b=> b.size>=pg.body*1.6 && words(b.text)>=2
         && b.text.length>=8 && b.top<pg.h*0.8);
-      pg.isAd = pg.n===1 || (pg.chars<230 && !display.length);
+      const jumps=pg.lines.filter(l=>/\b(pg|page)\.?\s?\d{1,3}\b/i.test(l.text)).length;
+      pg.isAd = pg.n===1 || (pg.chars<230 && !display.length)
+        || jumps>=5 || /CONTENT/.test(key(pg.section));
       ui.stage("Reading the columns", 0.5+ (i+1)/pages.length*0.12);
       if(i%12===0) await sleep(0);
     }
@@ -848,48 +905,55 @@ const Press = {
     ui.stage("Cutting the issue into articles",0.62);
     const arts=[]; let cur=null, curSec="", ads=0, adRun=0;
     const secKey=t=>key(t).replace(/\s+/g,"");
-    const startArt=pg=>{
-      const cands=headsOf(pg, pg.body);
-      cur={ id:uid(), title:norm(cands.map(c=>c.text).join(" ")), titleSet:new Set(cands),
-            dek:"", byline:"", section: pg.section||curSec||"Feature",
-            from:pg.n, to:pg.n, stream:[], chars:0, imgs:[] };
-      arts.push(cur);
-    };
+    function newArt(pg, blocks){
+      const cands=headsOf(blocks, pg, pg.body);
+      const a={ id:uid(), title:norm(cands.map(c=>c.text).join(" ")), titleSet:new Set(cands),
+        dek:"", byline:"", section: pg.section||curSec||"Feature",
+        from:pg.n, to:pg.n, stream:[], chars:0, imgs:[] };
+      arts.push(a); return a;
+    }
+    function addTo(a, pg, items){
+      if(!a || !items.length) return;
+      a.to=pg.n;
+      for(const s of items){ if(s.kind==="b") a.chars+=s.b.text.length; else a.imgs.push(s); }
+      a.stream.push(...items);
+    }
     for(const pg of pages){
       if(pg.isAd){ ads++; adRun++; if(adRun>=3) cur=null; ui.tick(pg.n-1,{ad:true}); continue; }
       adRun=0;
       const pb=pg.body;
+      /* one reading stream for the page: blocks in XY-cut order, pictures slotted by height */
+      const imgsOnly=pg.imgs.map((r,ix)=>({kind:"i", page:pg.n, rect:r, y:r[1], ix}));
+      const ordered=[]; let bi=0;
+      for(const b of pg.blocks){
+        while(bi<imgsOnly.length && imgsOnly[bi].y < b.top-4){ ordered.push(imgsOnly[bi]); bi++; }
+        ordered.push({kind:"b", b});
+      }
+      while(bi<imgsOnly.length){ ordered.push(imgsOnly[bi]); bi++; }
+
       const opener = pg.blocks.find(b=> b.type==="head" && b.size>=pb*1.9 && b.top < pg.h*0.62
         && b.text.length>=8 && /\p{L}[\p{L}\s]/u.test(b.text) && words(b.text)>=2);
-      const huge = pg.blocks.some(b=> b.size>=pb*2.7 && words(b.text)>=2 && b.top<pg.h*0.45);
+      const bigOne = pg.blocks.find(b=> b.size>=pb*2.7 && words(b.text)>=2 && b.top<pg.h*0.45);
       const fresh = pg.blocks.some(b=> b.size>=pb*1.3 && b.top<pg.h*0.6);
       const longRun = cur && (pg.n-cur.from)>=12 && fresh;
       const secNew = pg.section && secKey(pg.section)!==secKey(curSec) && fresh;
       const ready = !cur || cur.chars>260;
-      if(!cur || (ready && (opener||huge||longRun)) || (secNew && cur.chars>900)){
-        startArt(pg);
+      if(!cur || (ready && (opener||bigOne||longRun)) || (secNew && cur.chars>900)){
+        /* a new piece can open halfway down a page — everything above it
+           still belongs to the piece that was running */
+        const cut = opener || bigOne || null;
+        let ci = cut ? ordered.findIndex(s=> s.kind==="b" && s.b===cut) : 0;
+        if(ci<0) ci=0;
+        if(ci>0) addTo(cur, pg, ordered.slice(0,ci));
+        const bIx = cut ? Math.max(0, pg.blocks.indexOf(cut)) : 0;
+        cur = newArt(pg, pg.blocks.slice(bIx));
+        addTo(cur, pg, ordered.slice(ci));
         ui.tick(pg.n-1,{open:true, img:pg.imgs.length>0});
       } else {
+        addTo(cur, pg, ordered);
         ui.tick(pg.n-1,{text:true, img:pg.imgs.length>0});
       }
       if(pg.section) curSec=pg.section;
-      cur.to=pg.n;
-      cur.chars+=pg.chars;
-      /* merge blocks and pictures into one reading stream for this page */
-      const stream=pg.blocks.map(b=>({kind:"b", b, y:b.top}));
-      pg.imgs.forEach((r,ix)=> stream.push({kind:"i", page:pg.n, rect:r, y:r[1], ix}));
-      stream.sort((a,b)=>a.y-b.y);
-      /* keep block order from XY-cut, but slot pictures at their vertical place */
-      const ordered=[]; let bi=0;
-      const blocksOnly=pg.blocks.map(b=>({kind:"b",b}));
-      const imgsOnly=stream.filter(s=>s.kind==="i");
-      for(const s of blocksOnly){
-        while(bi<imgsOnly.length && imgsOnly[bi].y < s.b.top-4){ ordered.push(imgsOnly[bi]); bi++; }
-        ordered.push(s);
-      }
-      while(bi<imgsOnly.length){ ordered.push(imgsOnly[bi]); bi++; }
-      cur.stream.push(...ordered);
-      cur.imgs.push(...imgsOnly);
     }
     L("ok","▸ "+arts.length+" articles, "+ads+" advert/blank pages set aside");
 
@@ -993,26 +1057,46 @@ const Press = {
         if(best){ s.caption=best.b.text; best.used=true; }
       }
       a.body=[];
-      let lead=true;
+      let lead=true, pendingDrop="";
+      const seenP=new Set();
+      const JUNK=/^(continued|cont'?d|turn to|see page|also in|also on)\b/i;
+      const PGREF=/^\s*(pg|page)\.?\s*\d{1,3}\s*$/i;
+      const pushP=raw=>{
+        let t=tidy(raw);
+        if(pendingDrop && /^[\p{Ll}]/u.test(t)){ t=pendingDrop+t; pendingDrop=""; }
+        if(words(t)<2 || JUNK.test(t) || PGREF.test(t)) return;
+        const last=a.body[a.body.length-1];
+        /* a paragraph that runs from the foot of one column to the head of the
+           next is one paragraph, not two */
+        if(last && last.t==="p" && !/[.!?…”"’»\)\]]\s*$/.test(last.x) && /^[\p{Ll}(“"'‘]/u.test(t)){
+          last.x=tidy(last.x+" "+t); return;
+        }
+        if(t.length>44){
+          const k=t.slice(0,60).toLowerCase();
+          if(seenP.has(k)) return;                    /* the same prose set twice */
+          seenP.add(k);
+        }
+        a.body.push({t:"p", x:t, lead}); lead=false;
+      };
       for(const s of a.stream){
         if(s.kind==="i"){
           if(s.skip||!s.asset) continue;
-          a.body.push({t:"img", a:s.asset, w:s.w, h:s.h, c:s.caption||""});
+          a.body.push({t:"img", a:s.asset, w:s.w, h:s.h, c:tidy(s.caption||"")});
           continue;
         }
         const b=s.b;
-        if(s.used) continue;
-        if(b.type==="caption"){ continue; }
-        if(b.type==="drop"){ s.dropChar=b.text; continue; }
-        if(b.type==="quote"){ a.body.push({t:"quote", x:b.text}); continue; }
+        if(s.used || b.type==="caption") continue;
+        if(b.type==="drop"){ pendingDrop=b.text.trim(); continue; }
+        const bt=tidy(b.text);
+        if(JUNK.test(bt) || PGREF.test(bt)) continue;
+        if(b.type==="byline"){ if(!a.byline) a.byline=bt.replace(/^by\s+/i,""); continue; }
+        if(b.type==="quote"){ a.body.push({t:"quote", x:bt}); continue; }
         if(b.type==="sub"||b.type==="head"){
-          if(/^[\d.,%₹$\s+\-–—]+$/.test(b.text) || b.text.length<3) continue;
-          a.body.push({t:"h2", x:b.text}); continue; }
-        if(b.type==="byline"){ if(!a.byline) a.byline=b.text.replace(/^by\s+/i,""); continue; }
-        for(const p of splitParas(b)){
-          if(words(p)<2) continue;
-          a.body.push({t:"p", x:p, lead:lead}); lead=false;
+          if(/^[\d.,%₹$\s+\-–—]+$/.test(bt) || bt.length<3) continue;
+          if(key(bt)===key(a.title) || key(bt)===key(a.section)) continue;
+          a.body.push({t:"h2", x:bt}); continue;
         }
+        for(const p of splitParas(b)) pushP(p);
       }
       /* re-attach drop caps that print as their own letter */
       for(let i=0;i<a.body.length-1;i++){
@@ -1021,6 +1105,16 @@ const Press = {
           a.body[i+1].x=cell.x+a.body[i+1].x; a.body[i+1].lead=true; a.body.splice(i,1); i--;
         }
       }
+      /* a heading with nothing under it is a leftover from another page */
+      a.body=a.body.filter((c,i)=>{
+        if(c.t!=="h2") return true;
+        for(let j=i+1;j<a.body.length;j++){
+          if(a.body[j].t==="p") return true;
+          if(a.body[j].t==="h2") return false;
+        }
+        return false;
+      });
+      a.dek=tidy(a.dek); a.title=tidy(a.title); a.byline=tidy(a.byline);
       a.lead = (a.body.find(c=>c.t==="img")||{}).a || "";
       delete a.stream; delete a.imgs; delete a.chars;
     }
@@ -1149,6 +1243,7 @@ function applyPrefs(){
   R.setProperty("--read-face", prefs.face==="sans"
     ? '-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif' : 'var(--body)');
   R.setProperty("--read-align", prefs.justify==="on" ? "justify" : "left");
+  R.setProperty("--read-hyph", prefs.justify==="on" ? "auto" : "manual");
   document.body.dataset.theme=prefs.theme;
   const tc={paper:"#F2EFE6",sepia:"#EFE2C6",ink:"#131310"}[prefs.theme];
   const mt=document.querySelector('meta[name="theme-color"]'); if(mt) mt.content=tc;
