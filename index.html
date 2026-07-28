@@ -204,9 +204,10 @@ img{max-width:100%;display:block}
 .read__lead{margin:0;background:var(--paper-2)}
 .read__lead img{width:100%}
 .read__wrap{padding:0 var(--pad);max-width:640px;margin:0 auto}
-.read__k{display:block;margin:26px 0 12px}
-.read__t{font-family:var(--display);font-size:clamp(2.1rem,8.4vw,3.1rem);line-height:.96;
-  letter-spacing:-.012em;margin:0 0 14px}
+.read__k{display:block;margin:28px 0 13px;position:relative;padding-bottom:11px}
+.read__k::after{content:"";position:absolute;left:0;bottom:0;width:40px;height:2px;background:var(--red)}
+.read__t{font-family:var(--display);font-size:clamp(2.1rem,8.6vw,3.2rem);line-height:.95;
+  letter-spacing:-.014em;margin:0 0 15px;hyphens:manual}
 .read__d{font-family:var(--body);font-style:italic;font-size:1.12rem;line-height:1.44;
   color:var(--ink-2);margin:0 0 18px}
 .read__by{font-family:var(--util);font-size:.7rem;letter-spacing:.13em;text-transform:uppercase;
@@ -214,17 +215,21 @@ img{max-width:100%;display:block}
   margin:0 0 26px}
 .read__body{font-family:var(--read-face);font-size:var(--read-size);line-height:1.62;
   text-align:var(--read-align);hyphens:var(--read-hyph);-webkit-hyphens:var(--read-hyph);
-  overflow-wrap:break-word}
+  overflow-wrap:break-word;line-height:1.68;letter-spacing:.002em}
 .read__body p{margin:0 0 .95em}
 .read__body p:last-child{margin-bottom:0}
 .read__body p.lead::first-letter{
-  font-family:var(--display);font-size:3.32em;line-height:.82;float:left;
-  padding:.05em .09em 0 0;color:var(--red);
+  font-family:var(--display);font-size:3.3em;line-height:.78;float:left;
+  padding:.06em .1em 0 0;color:var(--red);
 }
-.read__body h2{font-family:var(--util);font-weight:700;font-size:.82rem;letter-spacing:.15em;
-  text-transform:uppercase;color:var(--ink);margin:2em 0 .8em;padding-top:.9em;border-top:1px solid var(--rule)}
-.pull{font-family:var(--display);font-size:1.62rem;line-height:1.18;color:var(--red);
-  margin:1.5em 0;padding-left:16px;border-left:2px solid var(--red);text-align:left}
+.read__body p.lead{margin-top:.15em}
+.read__body h2{font-family:var(--util);font-weight:700;font-size:.8rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink);margin:2.1em 0 .85em;padding-top:.95em;
+  border-top:1px solid var(--rule)}
+.read__body h2::after{content:"";display:block;width:26px;height:2px;background:var(--red);margin-top:.7em}
+.pull{font-family:var(--display);font-size:1.6rem;line-height:1.2;color:var(--red);
+  margin:1.6em 0;padding:.15em 0 .15em 18px;border-left:2px solid var(--red);
+  text-align:left;hyphens:manual}
 figure{margin:1.7em 0}
 figure.bleed{margin-left:calc(var(--pad) * -1);margin-right:calc(var(--pad) * -1)}
 figure img{width:100%;background:var(--paper-2)}
@@ -269,6 +274,43 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
 .lb__hint{position:absolute;top:calc(var(--safe-t) + 16px);left:var(--pad);color:#9C9585;
   font-family:var(--mono);font-size:.62rem}
 
+/* byline — the writer stands on their own line */
+.byline{margin:0 0 28px;padding:13px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--rule)}
+.byline__w{font-family:var(--display);font-size:1.16rem;line-height:1.2}
+.byline__w em{font-style:italic;font-size:.78rem;font-family:var(--util);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:400;
+  display:block;margin-bottom:3px}
+.byline__m{font-family:var(--util);font-size:.66rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3);margin-top:6px;line-height:1.6}
+
+/* wordbook */
+.wb__link{font-family:var(--util);font-size:.66rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--red);padding-bottom:1px}
+.wb{padding:14px 0;border-bottom:1px solid var(--rule);display:flex;gap:12px;align-items:flex-start}
+.wb__b{flex:1;min-width:0}
+.wb__w{font-family:var(--display);font-size:1.3rem;line-height:1.1}
+.wb__p{font-family:var(--mono);font-size:.64rem;color:var(--ink-3);margin:2px 0 6px}
+.wb__d{font-family:var(--body);font-size:.88rem;line-height:1.5;color:var(--ink-2)}
+.wb__s{font-family:var(--util);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-top:6px}
+.wb__x{font-family:var(--util);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+.wd__head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+  padding-bottom:12px;border-bottom:1px solid var(--ink)}
+.wd__w{font-family:var(--display);font-size:2rem;line-height:1}
+.wd__p{font-family:var(--mono);font-size:.7rem;color:var(--ink-3);margin-top:4px}
+.wd__save{font-family:var(--util);font-weight:700;font-size:.7rem;letter-spacing:.13em;
+  text-transform:uppercase;border:1px solid var(--red);color:var(--red);padding:9px 15px;
+  min-height:40px;flex:none}
+.wd__save[disabled]{border-color:var(--rule);color:var(--ink-3)}
+.wd__pos{font-family:var(--util);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--red);margin:16px 0 6px}
+.wd__def{font-family:var(--body);font-size:1rem;line-height:1.5;margin:0 0 7px;padding-left:14px;
+  border-left:1px solid var(--rule)}
+.wd__ex{font-family:var(--body);font-style:italic;font-size:.9rem;color:var(--ink-3);
+  padding-left:14px;margin:0 0 4px}
+.wd__hint{font-family:var(--util);font-size:.8rem;color:var(--ink-3);padding:18px 0}
+
 .toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 26px);transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:var(--paper);font-family:var(--util);font-size:.76rem;letter-spacing:.06em;
   padding:12px 18px;z-index:95;opacity:0;transition:.2s;pointer-events:none}
@@ -296,8 +338,27 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
     <div class="shelf__head">
       <span class="kicker">On the shelf</span>
       <span class="shelf__count" id="shelfCount"></span>
+      <button class="wb__link" id="openWords">Wordbook</button>
     </div>
     <div id="shelfList"></div>
+  </div>
+</section>
+
+<!-- ══ WORDBOOK ═══════════════════════════════════════════ -->
+<section class="view" id="v-words">
+  <div class="bar">
+    <button class="tapbig" id="backShelf2" aria-label="Back to shelf">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <span class="bar__title">Wordbook</span>
+  </div>
+  <div class="contents">
+    <div class="contents__head">
+      <span class="kicker">Kept from your reading</span>
+      <h2 class="contents__t">Wordbook</h2>
+      <div class="contents__m" id="wbM"></div>
+    </div>
+    <div id="wbList"></div>
   </div>
 </section>
 
@@ -423,6 +484,18 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
   <button class="btn" id="cogDone" style="width:100%;text-align:center;margin-top:16px">Done</button>
 </div>
 
+<div class="sheetui" id="wordSheet">
+  <div class="wd__head">
+    <div style="min-width:0">
+      <div class="wd__w" id="wdW"></div>
+      <div class="wd__p" id="wdP"></div>
+    </div>
+    <button class="wd__save" id="wdSave">Save</button>
+  </div>
+  <div id="wdBody"></div>
+  <button class="btn" id="wdDone" style="width:100%;text-align:center;margin-top:18px">Close</button>
+</div>
+
 <!-- ══ LIGHTBOX ═══════════════════════════════════════════ -->
 <div class="lb" id="lb">
   <span class="lb__hint">Pinch or double&#8209;tap to zoom</span>
@@ -481,10 +554,12 @@ const DB = (()=>{
   function open(){
     if(db) return Promise.resolve(db);
     return new Promise((res,rej)=>{
-      const rq=indexedDB.open("rasaala",1);
+      const rq=indexedDB.open("rasaala",2);
       rq.onupgradeneeded=()=>{ const d=rq.result;
         if(!d.objectStoreNames.contains("issues")) d.createObjectStore("issues",{keyPath:"id"});
         if(!d.objectStoreNames.contains("assets")) d.createObjectStore("assets");
+        if(!d.objectStoreNames.contains("words"))  d.createObjectStore("words",{keyPath:"w"});
+        if(!d.objectStoreNames.contains("defs"))   d.createObjectStore("defs",{keyPath:"w"});
       };
       rq.onsuccess=()=>{db=rq.result;res(db)};
       rq.onerror=()=>rej(rq.error);
@@ -498,6 +573,12 @@ const DB = (()=>{
     async allIssues(){ return wrap((await tx("issues","readonly")).getAll()); },
     async putAsset(k,blob){ return wrap((await tx("assets","readwrite")).put(blob,k)); },
     async getAsset(k){ return wrap((await tx("assets","readonly")).get(k)); },
+    async putWord(v){ return wrap((await tx("words","readwrite")).put(v)); },
+    async getWord(w){ return wrap((await tx("words","readonly")).get(w)); },
+    async allWords(){ return wrap((await tx("words","readonly")).getAll()); },
+    async dropWord(w){ return wrap((await tx("words","readwrite")).delete(w)); },
+    async putDef(v){ return wrap((await tx("defs","readwrite")).put(v)); },
+    async getDef(w){ return wrap((await tx("defs","readonly")).get(w)); },
     async dropIssue(id){
       await wrap((await tx("issues","readwrite")).delete(id));
       const st=await tx("assets","readwrite");
@@ -572,16 +653,9 @@ function mkLine(items){
   const sizes=items.map(i=>i.size);
   const size=median(sizes);
   const gaps=[]; for(let i=1;i<items.length;i++) gaps.push(items[i].x-(items[i-1].x+items[i-1].w));
-  let thr=size*0.25;
-  const shorts=items.filter(i=>i.s.trim().length<=2).length;
-  if(items.length>=5 && shorts/items.length>0.55){       /* letter-spaced display type */
-    const pos=gaps.filter(g=>g>0.05).sort((a,b)=>a-b);
-    if(pos.length>2){
-      let bi=0,bv=0;
-      for(let i=1;i<pos.length;i++){ const d=pos[i]-pos[i-1]; if(d>bv){bv=d;bi=i;} }
-      if(bv>size*0.1) thr=(pos[bi]+pos[bi-1])/2;
-    }
-  }
+  let thr=size*0.33;
+  /* letter-spaced display type is left alone here and mended later by
+     mkRepair(), which has the whole issue's vocabulary to work with */
   let t=items[0].s;
   for(let i=1;i<items.length;i++){
     const g=items[i].x-(items[i-1].x+items[i-1].w);
@@ -743,8 +817,10 @@ function joinLines(lines){
   }
   return norm(t).replace(/\u00AD/g,"");
 }
+const LIG={"\uFB00":"ff","\uFB01":"fi","\uFB02":"fl","\uFB03":"ffi","\uFB04":"ffl","\uFB05":"st","\uFB06":"st"};
 function tidy(t){
   return String(t||"")
+    .replace(/[\uFB00-\uFB06]/g,c=>LIG[c]||c)
     .replace(/\u00AD/g,"")
     .replace(/\s+/g," ")
     .replace(/\s+([,.;:!?%’”\)\]])/g,"$1")
@@ -786,6 +862,100 @@ function headsOf(blocks, pg, body){
   if(!c.length) return [];
   const top=c.reduce((m,b)=> b.size>m.size?b:m, c[0]);
   return c.filter(b=>b.size>=top.size*0.86).sort((a,b)=>a.top-b.top).slice(0,3);
+}
+
+/* ══ 4b · WORD REPAIR ══════════════════════════════════════
+   Print PDFs scatter display type letter by letter and split words
+   across text runs. The issue's own prose is the dictionary used to
+   put them back together. */
+const OKSHORT=new Set(("a i an as at be by do go he if in is it me my no of on or so "+
+  "to up us we am ah oh mr ms dr st ok tv uk pm").split(" "));
+function buildVocab(arts){
+  const v=new Map();
+  const add=t=>{ for(const w of String(t||"").match(/[A-Za-z]{3,}/g)||[]){
+    if(/[a-z]/.test(w)){ const k=w.toLowerCase(); v.set(k,(v.get(k)||0)+1); } } };
+  for(const a of arts){ add(a.title); add(a.dek);
+    for(const c of a.body){ add(c.x); add(c.c); } }
+  return v;
+}
+function mkRepair(v){
+  const core=t=>t.replace(/[^A-Za-z]/g,"");
+  const known=(w,n)=>(v.get(String(w).toLowerCase())||0)>=(n||3);
+  function segment(s){
+    const n=s.length, sc=new Float64Array(n+1).fill(-1e18), bk=new Int32Array(n+1);
+    sc[0]=0;
+    for(let i=1;i<=n;i++) for(let j=Math.max(0,i-18);j<i;j++){
+      const w=s.slice(j,i), c=v.get(w)||0;
+      let val;
+      if(c>=2 && w.length>=3) val=Math.log(c)+2.6*w.length;
+      else if(OKSHORT.has(w)) val=1;
+      else val=-9-2.5*w.length;
+      if(sc[j]+val>sc[i]){ sc[i]=sc[j]+val; bk[i]=j; }
+    }
+    const out=[]; let i=n;
+    while(i>0){ out.push(s.slice(bk[i],i)); i=bk[i]; }
+    return out.reverse();
+  }
+  return function repair(text){
+    if(!text || text.length<3) return text;
+    const parts=String(text).split(" ").filter(x=>x!=="");
+    const out=[];
+    for(let i=0;i<parts.length;){
+      const run=[]; let j=i;
+      while(j<parts.length){
+        const c=core(parts[j]);
+        if(!c || c.length>3) break;
+        if(OKSHORT.has(c.toLowerCase()) && !run.length) break;  /* may continue a run, never start one */
+        run.push(j); j++;
+      }
+      const avg=run.length ? run.reduce((n,k)=>n+core(parts[k]).length,0)/run.length : 9;
+      if(run.length>=3 && avg<=2.5){
+        const letters=core(run.map(k=>parts[k]).join(""));
+        if(letters.length>=4){
+          const pieces=segment(letters.toLowerCase());
+          let good=0;
+          for(const pc of pieces) if(known(pc,2)||OKSHORT.has(pc)) good+=pc.length;
+          if(pieces.length<run.length && good/letters.length>=0.75){
+            let pos=0;
+            for(const pc of pieces){ out.push(letters.slice(pos,pos+pc.length)); pos+=pc.length; }
+            i=run[run.length-1]+1; continue;
+          }
+        }
+      }
+      out.push(parts[i]); i++;
+    }
+    let cur=out;
+    for(let pass=0;pass<2;pass++){                 /* F I LMS → FI LMS → FILMS */
+      const res=[];
+      for(let i=0;i<cur.length;){
+        const c=core(cur[i]);
+        if(c && c.length<=4 && !known(c) && !OKSHORT.has(c.toLowerCase())){
+          if(i+1<cur.length){
+            const m=c+core(cur[i+1]);
+            if(known(m) && m.length>c.length){ res.push(cur[i]+cur[i+1]); i+=2; continue; }
+          }
+          if(res.length){
+            const pv=core(res[res.length-1]), m=pv+c;
+            if(known(m) && m.length>pv.length){ res[res.length-1]+=cur[i]; i++; continue; }
+          }
+        }
+        res.push(cur[i]); i++;
+      }
+      cur=res;
+    }
+    return cur.join(" ");
+  };
+}
+function properName(s){
+  s=tidy(s);
+  if(s && !/[a-z]/.test(s)) s=s.toLowerCase().replace(/\b\p{L}/gu,c=>c.toUpperCase());
+  return s;
+}
+function parseByline(t){
+  let s=tidy(t||"").replace(/^(text|words|story|report(ing)?|interview)\s+by\s+/i,"").replace(/^by\s+/i,"");
+  const parts=s.split(/\s*[\/|;]\s*/).map(x=>tidy(x)).filter(Boolean);
+  const writer=parts.shift()||"";
+  return { writer:properName(writer), credits:parts.map(properName).join(" · ") };
 }
 
 /* ══ THE PRESS ═════════════════════════════════════════════ */
@@ -1114,9 +1284,27 @@ const Press = {
         }
         return false;
       });
-      a.dek=tidy(a.dek); a.title=tidy(a.title); a.byline=tidy(a.byline);
+      a.dek=tidy(a.dek); a.title=tidy(a.title);
+      const bl=parseByline(a.byline);
+      a.byline=bl.writer; a.credits=bl.credits;
       a.lead = (a.body.find(c=>c.t==="img")||{}).a || "";
       delete a.stream; delete a.imgs; delete a.chars;
+    }
+
+    /* ── mend words broken by the typesetting ──────────── */
+    ui.stage("Mending broken words",0.92);
+    {
+      const vocab=buildVocab(keep), fix=mkRepair(vocab);
+      let mended=0;
+      for(const a of keep){
+        const before=a.title; a.title=fix(a.title); if(a.title!==before) mended++;
+        a.dek=fix(a.dek); a.section=cleanSection(fix(a.section));
+        for(const c of a.body){
+          if(c.x){ const o=c.x; c.x=fix(c.x); if(c.x!==o) mended++; }
+          if(c.c) c.c=fix(c.c);
+        }
+      }
+      L("ok","▸ vocabulary of "+vocab.size+" words · "+mended+" passages mended");
     }
 
     /* ── pass 6 · optional AI tidy ─────────────────────── */
@@ -1143,7 +1331,7 @@ const Press = {
       date:meta.CreationDate? String(meta.CreationDate) : "",
       pages:N, ads, built:Date.now(),
       cover:issueId+"/cover",
-      arts:keep.map(a=>({id:a.id,title:a.title,dek:a.dek,byline:a.byline,section:a.section,
+      arts:keep.map(a=>({id:a.id,title:a.title,dek:a.dek,byline:a.byline,credits:a.credits||"",section:a.section,
         from:a.from,to:a.to,readMins:a.readMins,lead:a.lead,body:a.body}))
     };
     await DB.putIssue(issue);
@@ -1288,10 +1476,11 @@ function route(s, push){
   else if(s.v==="issue"){ show("issue"); renderIssue(); }
   else if(s.v==="read"){ show("read"); renderArticle(); }
   else if(s.v==="press"){ show("press"); }
+  else if(s.v==="words"){ show("words"); renderWordbook(); }
 }
 window.addEventListener("popstate", e=>{
   if($("#lb").classList.contains("on")){ closeLB(); history.pushState(state,"",location.href); return; }
-  if($("#cog").classList.contains("on")){ closeCog(); history.pushState(state,"",location.href); return; }
+  if(sheetOpen){ closeSheet(); history.pushState(state,"",location.href); return; }
   const s=e.state||{v:"shelf"};
   if(state.v==="press" && Press.abort===false && s.v!=="press"){ Press.abort=true; }
   route(s,false);
@@ -1456,10 +1645,19 @@ async function renderArticle(){
   const h=document.createElement("h1"); h.className="read__t"; h.textContent=a.title;
   w.append(k,h);
   if(a.dek){ const d=document.createElement("p"); d.className="read__d"; d.textContent=a.dek; w.append(d); }
-  const by=document.createElement("div"); by.className="read__by";
-  by.textContent=(a.byline? a.byline+"  ·  ":"")+a.readMins+" min read  ·  pages "+a.from+
-    (a.to>a.from?"–"+a.to:"");
+  const by=document.createElement("div"); by.className="byline";
+  if(a.byline){
+    const n=document.createElement("div"); n.className="byline__w";
+    const lab=document.createElement("em"); lab.textContent="Written by";
+    n.append(lab, document.createTextNode(a.byline));
+    by.append(n);
+  }
+  const meta=document.createElement("div"); meta.className="byline__m";
+  meta.textContent=[a.credits, a.readMins+" min read",
+    "pages "+a.from+(a.to>a.from?"–"+a.to:"")].filter(Boolean).join("  ·  ");
+  by.append(meta);
   w.append(by);
+  curSrc=a.title+" · "+issue.name;
 
   const body=document.createElement("div"); body.className="read__body";
   let firstImg=true, firstP=true;
@@ -1568,11 +1766,128 @@ function closeLB(){ $("#lb").classList.remove("on"); $("#lbImg").src=""; }
   $("#lbX").onclick=()=>history.back();
 })();
 
+/* ── dictionary ──────────────────────────────────────────── */
+let curWord=null, curSrc=null;
+function wordAt(x,y){
+  let r=null;
+  if(document.caretRangeFromPoint) r=document.caretRangeFromPoint(x,y);
+  else if(document.caretPositionFromPoint){
+    const pp=document.caretPositionFromPoint(x,y);
+    if(pp){ r=document.createRange(); r.setStart(pp.offsetNode,pp.offset); r.collapse(true); }
+  }
+  if(!r || !r.startContainer || r.startContainer.nodeType!==3) return null;
+  const t=r.startContainer.textContent||"";
+  const isw=c=>/[\p{L}\p{M}’'-]/u.test(c||"");
+  let i=Math.min(r.startOffset, t.length-1);
+  if(i<0) return null;
+  if(!isw(t[i])){ if(isw(t[i-1])) i--; else return null; }
+  let a=i,b=i;
+  while(a>0 && isw(t[a-1])) a--;
+  while(b<t.length-1 && isw(t[b+1])) b++;
+  const w=t.slice(a,b+1).replace(/^[-’']+|[-’']+$/g,"");
+  return w.length>1 ? w : null;
+}
+async function lookup(k){
+  const hit=await DB.getDef(k);
+  if(hit) return hit;
+  let r;
+  try{ r=await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(k)); }
+  catch(e){ throw new Error("No connection — try again when you’re online"); }
+  if(r.status===404) throw new Error("Not in the dictionary");
+  if(!r.ok) throw new Error("The dictionary didn’t answer");
+  const j=await r.json(), e=j[0]||{};
+  const out={ w:k, display:e.word||k,
+    phon:e.phonetic || (e.phonetics||[]).map(x=>x.text).filter(Boolean)[0] || "",
+    senses:(e.meanings||[]).slice(0,3).map(m=>({
+      pos:m.partOfSpeech||"",
+      defs:(m.definitions||[]).slice(0,2).map(d=>d.definition).filter(Boolean),
+      ex:((m.definitions||[])[0]||{}).example||"" }))};
+  try{ await DB.putDef(out); }catch(e){}
+  return out;
+}
+function renderSenses(d){
+  const B=$("#wdBody"); B.innerHTML="";
+  if(!d.senses || !d.senses.length){ B.innerHTML='<p class="wd__hint">No definition found.</p>'; return; }
+  for(const sn of d.senses){
+    if(sn.pos){ const h=document.createElement("div"); h.className="wd__pos"; h.textContent=sn.pos; B.append(h); }
+    for(const t of sn.defs){ const p=document.createElement("p"); p.className="wd__def"; p.textContent=t; B.append(p); }
+    if(sn.ex){ const p=document.createElement("p"); p.className="wd__ex"; p.textContent="“"+sn.ex+"”"; B.append(p); }
+  }
+}
+async function openWord(raw){
+  const k=raw.toLowerCase().replace(/[^\p{L}’'-]/gu,"");
+  if(k.length<2) return;
+  $("#wdW").textContent=raw; $("#wdP").textContent="";
+  $("#wdBody").innerHTML='<p class="wd__hint">Looking it up…</p>';
+  $("#wdSave").disabled=true; $("#wdSave").textContent="Save";
+  openSheet("#wordSheet");
+  curWord={w:k, display:raw, phon:"", senses:[]};
+  let shown=false;
+  try{
+    const d=await lookup(k);
+    curWord=d; shown=true;
+    $("#wdW").textContent=d.display||raw; $("#wdP").textContent=d.phon||"";
+    renderSenses(d);
+  }catch(err){
+    const saved=await DB.getWord(k).catch(()=>null);
+    if(saved){ curWord=saved; $("#wdP").textContent=saved.phon||""; renderSenses(saved); shown=true; }
+    else $("#wdBody").innerHTML='<p class="wd__hint">'+esc(err.message||"Couldn’t look that up")+"</p>";
+  }
+  const have=await DB.getWord(k).catch(()=>null);
+  $("#wdSave").textContent = have ? "Saved" : "Save";
+  $("#wdSave").disabled = !!have || !shown;
+}
+$("#wdSave").onclick=async()=>{
+  if(!curWord) return;
+  const rec=Object.assign({},curWord,{src:curSrc||"", at:Date.now()});
+  await DB.putWord(rec);
+  $("#wdSave").textContent="Saved"; $("#wdSave").disabled=true;
+  toast("Kept in your wordbook");
+};
+$("#wdDone").onclick=()=>history.back();
+$("#openWords").onclick=()=>route({v:"words"});
+$("#backShelf2").onclick=()=>route({v:"shelf"});
+
+async function renderWordbook(){
+  const L=$("#wbList"); L.innerHTML="";
+  let all=[]; try{ all=await DB.allWords(); }catch(e){}
+  all.sort((a,b)=>b.at-a.at);
+  $("#wbM").textContent = all.length ? all.length+" word"+(all.length===1?"":"s")+" kept"
+    : "Tap any word while reading to look it up and keep it.";
+  if(!all.length){ L.innerHTML='<p class="empty">Nothing kept yet.</p>'; return; }
+  for(const rec of all){
+    const row=document.createElement("div"); row.className="wb";
+    const b=document.createElement("div"); b.className="wb__b";
+    const w=document.createElement("div"); w.className="wb__w"; w.textContent=rec.display||rec.w;
+    b.append(w);
+    if(rec.phon){ const p=document.createElement("div"); p.className="wb__p"; p.textContent=rec.phon; b.append(p); }
+    const first=(rec.senses||[])[0];
+    if(first){
+      const d=document.createElement("div"); d.className="wb__d";
+      d.textContent=(first.pos? first.pos+" · ":"")+((first.defs||[])[0]||"");
+      b.append(d);
+    }
+    if(rec.src){ const sc=document.createElement("div"); sc.className="wb__s"; sc.textContent=rec.src; b.append(sc); }
+    const x=document.createElement("button"); x.className="wb__x"; x.textContent="Remove";
+    x.onclick=async()=>{ await DB.dropWord(rec.w); renderWordbook(); toast("Removed"); };
+    row.append(b,x); L.append(row);
+  }
+}
+
 /* ── settings sheet ──────────────────────────────────────── */
-function openCog(){ $("#cog").classList.add("on"); $("#scrim").classList.add("on");
-  history.pushState(state,"",location.href); }
-function closeCog(){ $("#cog").classList.remove("on"); $("#scrim").classList.remove("on");
-  prefs.aiKey=$("#aiKey").value.trim(); prefs.aiModel=$("#aiModel").value.trim(); savePrefs(); }
+let sheetOpen=null;
+function openSheet(sel){
+  if(sheetOpen && sheetOpen!==sel) $(sheetOpen).classList.remove("on");
+  sheetOpen=sel; $(sel).classList.add("on"); $("#scrim").classList.add("on");
+  history.pushState(state,"",location.href);
+}
+function closeSheet(){
+  if(!sheetOpen) return;
+  if(sheetOpen==="#cog"){ prefs.aiKey=$("#aiKey").value.trim(); prefs.aiModel=$("#aiModel").value.trim(); savePrefs(); }
+  $(sheetOpen).classList.remove("on"); $("#scrim").classList.remove("on"); sheetOpen=null;
+}
+function openCog(){ openSheet("#cog"); }
+function closeCog(){ closeSheet(); }
 $("#issCog").onclick=openCog; $("#readCog").onclick=openCog;
 $("#cogDone").onclick=()=>history.back();
 $("#scrim").onclick=()=>history.back();
@@ -1593,6 +1908,13 @@ $("#drop").addEventListener("dragover",e=>{e.preventDefault();$("#drop").classLi
 $("#drop").addEventListener("dragleave",()=>$("#drop").classList.remove("hot"));
 $("#drop").addEventListener("drop",e=>{ e.preventDefault(); $("#drop").classList.remove("hot");
   startPress(e.dataTransfer.files[0]); });
+$("#readBody").addEventListener("click", e=>{
+  if(e.target.closest("figure")) return;
+  const sel=window.getSelection();
+  if(sel && String(sel).trim().length>1) return;       /* the reader is selecting text */
+  const w=wordAt(e.clientX, e.clientY);
+  if(w) openWord(w);
+});
 $("#backShelf").onclick=()=>route({v:"shelf"});
 $("#backIssue").onclick=()=>route({v:"issue", id:issue?issue.id:state.id});
 
