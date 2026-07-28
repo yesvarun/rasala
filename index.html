@@ -136,7 +136,10 @@ img{max-width:100%;display:block}
 .empty{padding:40px 0;text-align:center;color:var(--ink-3);font-family:var(--util);font-size:.82rem}
 
 /* ── press room (conversion) ─────────────────────────────── */
-.press{padding:calc(var(--safe-t) + 22px) var(--pad) 40px;max-width:720px;margin:0 auto}
+.press{padding:0 var(--pad) 0;max-width:720px;margin:0 auto;min-height:100dvh;
+  display:flex;flex-direction:column}
+.press__head{position:sticky;top:0;z-index:30;background:var(--paper);
+  padding:calc(var(--safe-t) + 18px) 0 12px;border-bottom:1px solid var(--rule)}
 .press__stage{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .press__name{font-family:var(--util);font-weight:700;letter-spacing:.15em;
   text-transform:uppercase;font-size:.74rem}
@@ -164,7 +167,8 @@ img{max-width:100%;display:block}
 
 .sheet{display:flex;gap:14px;margin:24px 0 0;align-items:flex-start}
 .sheet__cv{width:96px;flex:none;border:1px solid var(--rule);background:var(--paper-2);display:block}
-.sheet__meta{font-family:var(--mono);font-size:.66rem;color:var(--ink-3);line-height:1.9}
+.sheet__meta{font-family:var(--mono);font-size:.66rem;color:var(--ink-3);line-height:1.9;
+  white-space:pre-line}
 .sheet__meta b{color:var(--ink);font-weight:500}
 
 .log{
@@ -176,7 +180,9 @@ img{max-width:100%;display:block}
 .log .t{color:var(--ink-3)}
 .log .ok{color:var(--press)}
 .log .warn{color:var(--gold)}
-.press__acts{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.press__acts{display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:0;margin-top:auto;
+  background:var(--paper);border-top:1px solid var(--rule);
+  padding:14px 0 calc(var(--safe-b) + 14px)}
 
 /* ── contents ────────────────────────────────────────────── */
 .cover{position:relative;background:var(--paper-2);border-bottom:1px solid var(--ink)}
@@ -365,13 +371,15 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
 <!-- ══ PRESS ROOM ═════════════════════════════════════════ -->
 <section class="view" id="v-press">
   <div class="press">
-    <span class="kicker">Running the press</span>
-    <div class="press__stage" style="margin-top:14px">
-      <span class="press__name" id="stName">Opening file</span>
-      <span class="press__pct" id="stPct">0%</span>
+    <div class="press__head">
+      <span class="kicker">Running the press</span>
+      <div class="press__stage" style="margin-top:14px">
+        <span class="press__name" id="stName">Opening file</span>
+        <span class="press__pct" id="stPct">0%</span>
+      </div>
+      <div class="press__track"><div class="press__fill" id="stFill"></div></div>
+      <div class="press__sub"><span id="stLeft">&nbsp;</span><span id="stRight">&nbsp;</span></div>
     </div>
-    <div class="press__track"><div class="press__fill" id="stFill"></div></div>
-    <div class="press__sub"><span id="stLeft">&nbsp;</span><span id="stRight">&nbsp;</span></div>
 
     <div class="folio">
       <div class="folio__lab">Signature &mdash; every page of the issue</div>
@@ -467,19 +475,24 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
     </div>
   </div>
   <div class="row" style="display:block">
+    <span class="row__l">Picture quality</span>
+    <div class="seg" data-set="q" style="margin-top:9px">
+      <button data-v="1.4">Fast</button><button data-v="1.9">Standard</button><button data-v="2.6">Fine</button>
+    </div>
+    <p class="note">Fine gives sharper pictures and takes about twice as long. Either way the
+      progress bar stays pinned to the top of the screen while the press runs, so you can see
+      exactly which sheet it is on.</p>
+  </div>
+  <div class="row" style="display:block;border:0">
     <span class="row__l">Tidy up with AI &mdash; optional</span>
     <div class="seg" data-set="ai" style="margin-top:9px">
       <button data-v="off">Off</button><button data-v="gemini">Gemini</button><button data-v="claude">Claude</button>
     </div>
     <input class="field" id="aiKey" type="password" placeholder="API key (kept on this phone only)" autocomplete="off">
     <input class="field" id="aiModel" type="text" placeholder="model name" autocomplete="off">
-    <p class="note">The press works fine without this. Turn it on and each article gets a second pass that fixes column order, drops page furniture, and names the headline, standfirst and byline properly. Costs one small API call per article.</p>
-  </div>
-  <div class="row" style="border:0">
-    <span class="row__l">Picture quality</span>
-    <div class="seg" data-set="q">
-      <button data-v="1.5">Light</button><button data-v="2">Standard</button><button data-v="2.6">Fine</button>
-    </div>
+    <p class="note">The press works fine without this. Turn it on and each article gets a second
+      pass that fixes column order, drops page furniture, and names the headline, standfirst and
+      byline properly. Costs one small API call per article.</p>
   </div>
   <button class="btn" id="cogDone" style="width:100%;text-align:center;margin-top:16px">Done</button>
 </div>
@@ -1169,26 +1182,44 @@ const Press = {
       if(!need.has(im.page)) need.set(im.page,[]);
       need.get(im.page).push(im);
     }
-    const seen=new Map(); let saved=0, dropped=0, done=0;
+    const seen=new Map(); let saved=0, dropped=0, done=0, slow=0;
+    /* the six biggest pictures on a page are plenty; the rest is furniture */
+    for(const [pn,list] of need) if(list.length>6){
+      list.sort((x,y)=>area(y.rect)-area(x.rect));
+      for(const extra of list.splice(6)) extra.skip=true;
+    }
     const pageList=Array.from(need.keys()).sort((a,b)=>a-b);
     if(!pageList.includes(1)) pageList.unshift(1);
+    L("b","▸ Rendering "+pageList.length+" sheets at "+scale.toFixed(1)+"×");
+    const rt0=performance.now();
 
     for(const pn of pageList){
       if(this.abort) throw new Error("stopped");
       const pg=await pdf.getPage(pn);
-      const vp=pg.getViewport({scale});
+      const base=pg.getViewport({scale:1});
+      const sc=Math.min(scale, 2400/Math.max(base.width, base.height));
+      const vp=pg.getViewport({scale:sc});
       cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
       cx.fillStyle="#fff"; cx.fillRect(0,0,cv.width,cv.height);
-      await pg.render({canvasContext:cx, viewport:vp, intent:"display"}).promise;
+      try{
+        await renderPage(pg, vp, cx, 30000);
+      }catch(err){
+        if(String(err.message)==="stopped") throw err;
+        slow++; L("warn","  sheet "+pn+" skipped — "+(err.message||err));
+        pg.cleanup(); done++;
+        ui.stage("Pulling the pictures", 0.66+done/pageList.length*0.26);
+        continue;
+      }
       ui.sheet(cv);
       if(pn===1){
         const cover=await blobOf(cv,c2,x2,0,0,cv.width,cv.height,900,0.86);
-        await DB.putAsset(issueId+"/cover", cover);
+        if(cover) await DB.putAsset(issueId+"/cover", cover);
       }
       for(const im of (need.get(pn)||[])){
+        if(im.skip) continue;
         const r=im.rect;
-        const sx=clamp(Math.floor(r[0]*scale),0,cv.width-2), sy=clamp(Math.floor(r[1]*scale),0,cv.height-2);
-        const sw=clamp(Math.ceil((r[2]-r[0])*scale),2,cv.width-sx), sh=clamp(Math.ceil((r[3]-r[1])*scale),2,cv.height-sy);
+        const sx=clamp(Math.floor(r[0]*sc),0,cv.width-2), sy=clamp(Math.floor(r[1]*sc),0,cv.height-2);
+        const sw=clamp(Math.ceil((r[2]-r[0])*sc),2,cv.width-sx), sh=clamp(Math.ceil((r[3]-r[1])*sc),2,cv.height-sy);
         hx.drawImage(cv,sx,sy,sw,sh,0,0,8,8);
         const px=hx.getImageData(0,0,8,8).data;
         let sum=0; const g=[];
@@ -1199,18 +1230,28 @@ const Press = {
         if(sd<5){ dropped++; im.skip=true; continue; }                 /* flat: a frame, not a photo */
         const hits=(seen.get(sig)||0)+1; seen.set(sig,hits);
         if(hits>2){ dropped++; im.skip=true; continue; }               /* logo repeating across pages */
-        const id="p"+pn+"_"+im.ix;
-        im.asset=issueId+"/"+id;
+        const blob=await blobOf(cv,c2,x2,sx,sy,sw,sh,1500,0.84);
+        if(!blob){ dropped++; im.skip=true; continue; }
+        im.asset=issueId+"/p"+pn+"_"+im.ix;
         im.w=sw; im.h=sh;
-        await DB.putAsset(im.asset, await blobOf(cv,c2,x2,sx,sy,sw,sh,1500,0.84));
+        await DB.putAsset(im.asset, blob);
         saved++;
       }
       pg.cleanup();
       done++;
+      const per=(performance.now()-rt0)/done;
+      const left=Math.round(per*(pageList.length-done)/1000);
       ui.stage("Pulling the pictures", 0.66+done/pageList.length*0.26);
-      ui.sub("sheet "+pn, saved+" pictures kept · "+dropped+" discarded");
+      ui.sub("sheet "+pn+" · "+done+" of "+pageList.length,
+             saved+" pictures · about "+(left>90 ? Math.round(left/60)+" min" : left+"s")+" left");
+      ui.meta("Sheet "+pn+" of "+pages.length+"\n"+done+" rendered · "+saved+" pictures kept\n"+
+              "about "+(left>90 ? Math.round(left/60)+" min" : left+"s")+" left");
+      if(done%8===0 || done===pageList.length)
+        L("t","  "+done+"/"+pageList.length+" sheets · "+saved+" pictures · "+
+          Math.round((performance.now()-rt0)/1000)+"s elapsed");
       await sleep(0);
     }
+    if(slow) L("warn","  "+slow+" sheets were too heavy to render and were skipped");
     L("ok","▸ "+saved+" pictures cropped, "+dropped+" rejected as furniture");
 
     /* ── captions + final shape ────────────────────────── */
@@ -1342,12 +1383,38 @@ const Press = {
   }
 };
 
+async function renderPage(pg, vp, cx, ms){
+  const task=pg.render({canvasContext:cx, viewport:vp, intent:"display"});
+  let t1=null, t2=null;
+  try{
+    await Promise.race([
+      task.promise,
+      new Promise((_,rej)=>{ t1=setTimeout(()=>{ try{task.cancel();}catch(e){}
+        rej(new Error("timed out")); }, ms); }),
+      new Promise((_,rej)=>{ t2=setInterval(()=>{ if(Press.abort){ try{task.cancel();}catch(e){}
+        rej(new Error("stopped")); } }, 200); })
+    ]);
+  } finally { clearTimeout(t1); clearInterval(t2); }
+}
 async function blobOf(src,c2,x2,sx,sy,sw,sh,maxW,q){
   const k=Math.min(1, maxW/sw);
   c2.width=Math.max(1,Math.round(sw*k)); c2.height=Math.max(1,Math.round(sh*k));
   x2.fillStyle="#fff"; x2.fillRect(0,0,c2.width,c2.height);
   x2.drawImage(src,sx,sy,sw,sh,0,0,c2.width,c2.height);
-  return new Promise(res=>c2.toBlob(b=>res(b),"image/jpeg",q));
+  const b=await new Promise(res=>{
+    let settled=false;
+    const t=setTimeout(()=>{ if(!settled){ settled=true; res(null); } }, 8000);
+    try{
+      c2.toBlob(v=>{ if(settled) return; settled=true; clearTimeout(t); res(v); },"image/jpeg",q);
+    }catch(e){ if(!settled){ settled=true; clearTimeout(t); res(null); } }
+  });
+  if(b && b.size) return b;
+  try{                                   /* some Android builds stall in toBlob */
+    const url=c2.toDataURL("image/jpeg",q), bin=atob(url.split(",")[1]);
+    const arr=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    return new Blob([arr],{type:"image/jpeg"});
+  }catch(e){ return null; }
 }
 function cleanSection(s){
   if(!s) return "Feature";
@@ -1421,9 +1488,13 @@ const AI = {
 };
 /* ══ 7 · THE APP ═══════════════════════════════════════════ */
 const DEFAULTS={size:"1.06",face:"serif",theme:"paper",img:"inset",justify:"off",
-                ai:"off",aiKey:"",aiModel:"",q:"2"};
+                ai:"off",aiKey:"",aiModel:"",q:"1.9"};
 let prefs=Object.assign({},DEFAULTS);
 try{ Object.assign(prefs, JSON.parse(localStorage.getItem("rasaala.prefs")||"{}")); }catch(e){}
+if(!["1.4","1.9","2.6"].includes(prefs.q)){                 /* migrate older choices */
+  const n=parseFloat(prefs.q)||1.9;
+  prefs.q = n<1.7 ? "1.4" : n<2.3 ? "1.9" : "2.6";
+}
 function savePrefs(){ try{ localStorage.setItem("rasaala.prefs", JSON.stringify(prefs)); }catch(e){} }
 function applyPrefs(){
   const R=document.documentElement.style;
@@ -1542,6 +1613,7 @@ const UI={
     $("#stFill").style.width=p+"%";
   },
   sub(l,r){ $("#stLeft").textContent=l||"\u00a0"; $("#stRight").textContent=r||"\u00a0"; },
+  meta(t){ $("#sheetMeta").textContent=t; },
   sheet(cv){
     const c=$("#sheetCv"), x=c.getContext("2d");
     c.height=Math.round(96*cv.height/cv.width);
@@ -1568,7 +1640,7 @@ async function startPress(file){
   $("#sheetMeta").textContent="Waiting for the first sheet…";
   route({v:"press"});
   const api={ log:(c,m)=>UI.log(c,m), ticks:UI.ticks.bind(UI), tick:UI.tick.bind(UI),
-              stage:UI.stage.bind(UI), sub:UI.sub.bind(UI),
+              stage:UI.stage.bind(UI), sub:UI.sub.bind(UI), meta:UI.meta.bind(UI),
               sheet:(cv)=>{ UI.sheet(cv); } };
   try{
     const iss=await Press.run(file, prefs, api);
