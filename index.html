@@ -330,6 +330,16 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
 .study .wb__d,.study .tr__w,.study .tr__d{filter:blur(5px);transition:filter .15s}
 .study .wb.open .wb__d,.study .wb.open .tr__w,.study .wb.open .tr__d{filter:none}
 
+.plates{padding:0 0 70px}
+.plates__head{padding:24px var(--pad) 14px;border-bottom:2px solid var(--ink);
+  max-width:720px;margin:0 auto}
+.plates__t{font-family:var(--display);font-size:2.3rem;line-height:.98;margin:6px 0 8px}
+.plate{margin:26px auto 0;max-width:720px}
+.plate img{width:100%;background:var(--paper-2);border:1px solid var(--rule)}
+.plate__n{font-family:var(--mono);font-size:.62rem;color:var(--ink-3);
+  padding:7px var(--pad) 0;display:flex;justify-content:space-between}
+.adlink{display:flex;gap:14px;padding:18px 0 4px;width:100%;text-align:left;align-items:center}
+.adlink__im{width:56px;height:74px;flex:none;object-fit:cover;border:1px solid var(--rule);background:var(--paper-3)}
 .toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 26px);transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:var(--paper);font-family:var(--util);font-size:.76rem;letter-spacing:.06em;
   padding:12px 18px;z-index:95;opacity:0;transition:.2s;pointer-events:none}
@@ -440,6 +450,22 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
     </div>
     <div id="artList"></div>
   </div>
+</section>
+
+<!-- ══ PLATES ═════════════════════════════════════════════ -->
+<section class="view" id="v-plates">
+  <div class="bar">
+    <button class="tapbig" id="backIssue2" aria-label="Back to contents">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <span class="bar__title">Advertisements</span>
+  </div>
+  <div class="plates__head">
+    <span class="kicker">Bound at the back</span>
+    <h2 class="plates__t">The advertisements</h2>
+    <div class="contents__m" id="plM"></div>
+  </div>
+  <div class="plates" id="plateList"></div>
 </section>
 
 <!-- ══ READER ═════════════════════════════════════════════ -->
@@ -1177,15 +1203,20 @@ const Press = {
       const display=pg.blocks.filter(b=> b.size>=pg.body*1.6 && words(b.text)>=2
         && b.text.length>=8 && b.top<pg.h*0.8);
       const jumps=pg.lines.filter(l=>/\b(pg|page)\.?\s?\d{1,3}\b/i.test(l.text)).length;
-      pg.isAd = pg.n===1 || (pg.chars<230 && !display.length)
-        || jumps>=5 || /CONTENT/.test(key(pg.section));
+      const contents = jumps>=5 || /CONTENT/.test(key(pg.section));
+      const thin = pg.chars<230 && !display.length;
+      pg.kind = pg.n===1 ? "cover"
+        : contents ? "contents"
+        : thin ? ((pg.imgArea>0.18 || pg.chars>20) ? "advert" : "blank")
+        : "page";
+      pg.isAd = pg.kind!=="page";
       ui.stage("Reading the columns", 0.5+ (i+1)/pages.length*0.12);
       if(i%12===0) await sleep(0);
     }
 
     /* ── pass 4 · articles ─────────────────────────────── */
     ui.stage("Cutting the issue into articles",0.62);
-    const arts=[]; let cur=null, curSec="", ads=0, adRun=0;
+    const arts=[], plates=[]; let cur=null, curSec="", ads=0, adRun=0;
     const secKey=t=>key(t).replace(/\s+/g,"");
     function newArt(pg, blocks){
       const cands=headsOf(blocks, pg, pg.body);
@@ -1201,7 +1232,11 @@ const Press = {
       a.stream.push(...items);
     }
     for(const pg of pages){
-      if(pg.isAd){ ads++; adRun++; if(adRun>=3) cur=null; ui.tick(pg.n-1,{ad:true}); continue; }
+      if(pg.isAd){
+        ads++; adRun++; if(adRun>=3) cur=null;
+        if(pg.kind==="advert") plates.push(pg.n);
+        ui.tick(pg.n-1,{ad:true}); continue;
+      }
       adRun=0;
       const pb=pg.body;
       /* one reading stream for the page: blocks in XY-cut order, pictures slotted by height */
@@ -1237,7 +1272,7 @@ const Press = {
       }
       if(pg.section) curSec=pg.section;
     }
-    L("ok","▸ "+arts.length+" articles, "+ads+" advert/blank pages set aside");
+    L("ok","▸ "+arts.length+" articles · "+plates.length+" advert plates kept whole");
 
     /* headline, standfirst, byline */
     for(const a of arts){
@@ -1287,8 +1322,9 @@ const Press = {
       list.sort((x,y)=>area(y.rect)-area(x.rect));
       for(const extra of list.splice(6)) extra.skip=true;
     }
-    const pageList=Array.from(need.keys()).sort((a,b)=>a-b);
-    if(!pageList.includes(1)) pageList.unshift(1);
+    const plateSet=new Set(plates), plateAssets=[];
+    const pageSet=new Set([1, ...need.keys(), ...plates]);
+    const pageList=Array.from(pageSet).sort((a,b)=>a-b);
     L("b","▸ Rendering "+pageList.length+" sheets at "+scale.toFixed(1)+"×");
     const rt0=performance.now();
 
@@ -1313,6 +1349,14 @@ const Press = {
       if(pn===1){
         const cover=await blobOf(cv,c2,x2,0,0,cv.width,cv.height,900,0.86);
         if(cover) await DB.putAsset(issueId+"/cover", cover);
+      }
+      if(plateSet.has(pn)){
+        const plate=await blobOf(cv,c2,x2,0,0,cv.width,cv.height,1200,0.82);
+        if(plate){
+          const kk=issueId+"/ad"+pn;
+          await DB.putAsset(kk, plate);
+          plateAssets.push({page:pn, a:kk, w:cv.width, h:cv.height});
+        }
       }
       for(const im of (need.get(pn)||[])){
         if(im.skip) continue;
@@ -1352,6 +1396,7 @@ const Press = {
     }
     if(slow) L("warn","  "+slow+" sheets were too heavy to render and were skipped");
     L("ok","▸ "+saved+" pictures cropped, "+dropped+" rejected as furniture");
+    if(plateAssets.length) L("ok","▸ "+plateAssets.length+" advert plates bound at the back");
 
     /* ── captions + final shape ────────────────────────── */
     for(const a of keep){
@@ -1469,7 +1514,7 @@ const Press = {
       id:issueId,
       name:(meta.Title||file.name.replace(/\.pdf$/i,"")).slice(0,90),
       date:meta.CreationDate? String(meta.CreationDate) : "",
-      pages:N, ads, built:Date.now(),
+      pages:N, ads, plates:plateAssets, built:Date.now(),
       cover:issueId+"/cover",
       arts:keep.map(a=>({id:a.id,title:a.title,dek:a.dek,byline:a.byline,credits:a.credits||"",section:a.section,
         from:a.from,to:a.to,readMins:a.readMins,lead:a.lead,body:a.body}))
@@ -1647,6 +1692,7 @@ function route(s, push){
   else if(s.v==="read"){ show("read"); renderArticle(); }
   else if(s.v==="press"){ show("press"); }
   else if(s.v==="words"){ show("words"); renderWordbook(); }
+  else if(s.v==="plates"){ show("plates"); renderPlates(); }
 }
 window.addEventListener("popstate", e=>{
   if($("#lb").classList.contains("on")){ closeLB(); history.pushState(state,"",location.href); return; }
@@ -1747,7 +1793,7 @@ async function startPress(file){
     $("#openBtn").style.display="";
     $("#openBtn").onclick=()=>{ issue=iss; route({v:"issue", id:iss.id}); };
     $("#sheetMeta").innerHTML="<b>"+esc(iss.name)+"</b><br>"+iss.arts.length+" articles<br>"+
-      iss.pages+" pages · "+iss.ads+" adverts skipped";
+      iss.pages+" pages · "+((iss.plates||[]).length)+" advert plates";
     toast("Issue bound");
   }catch(err){
     if(String(err.message)==="stopped"){ UI.log("warn","▸ Stopped."); }
@@ -1766,7 +1812,9 @@ async function renderIssue(){
   $("#issBarT").textContent=issue.name;
   $("#issT").textContent=issue.name;
   $("#issM").textContent=issue.arts.length+" articles · "+issue.pages+" pages · "+
-    issue.ads+" adverts left behind";
+    ((issue.plates||[]).length
+      ? (issue.plates.length+" advertisement plates at the back")
+      : issue.ads+" pages set aside");
   const cw=$("#coverWrap"); cw.innerHTML="";
   const ci=document.createElement("img"); ci.alt="Cover"; bind(ci, issue.cover);
   ci.onclick=()=>openLB(issue.cover,"Cover");
@@ -1791,6 +1839,42 @@ async function renderIssue(){
     b.append(im,d);
     b.onclick=()=>{ artIx=i; route({v:"read", id:issue.id, a:i}); };
     L.append(b);
+  });
+
+  const pl=issue.plates||[];
+  if(pl.length){
+    const h=document.createElement("div"); h.className="sec"; h.textContent="Bound at the back";
+    const b=document.createElement("button"); b.className="art adlink";
+    const im=document.createElement("img"); im.className="adlink__im"; im.alt=""; bind(im, pl[0].a);
+    const d=document.createElement("div"); d.className="art__b";
+    d.innerHTML='<span class="art__k"></span><h3 class="art__t"></h3><p class="art__d"></p>';
+    $(".art__k",d).textContent="The advertisements";
+    $(".art__t",d).textContent=pl.length+" plate"+(pl.length===1?"":"s");
+    $(".art__d",d).textContent="Kept whole, exactly as they ran in the issue.";
+    b.append(im,d);
+    b.onclick=()=>route({v:"plates", id:issue.id});
+    L.append(h,b);
+  }
+}
+
+async function renderPlates(){
+  if(!issue && state.id) issue=await DB.getIssue(state.id);
+  if(!issue){ route({v:"shelf"},false); return; }
+  const pl=issue.plates||[];
+  $("#plM").textContent = pl.length+" plate"+(pl.length===1?"":"s")+" · tap any to fill the screen";
+  const L=$("#plateList"); L.innerHTML="";
+  pl.forEach((p,i)=>{
+    const fig=document.createElement("div"); fig.className="plate";
+    const im=document.createElement("img"); im.alt="Advertisement, page "+p.page;
+    im.loading="lazy";
+    if(p.w&&p.h){ im.width=p.w; im.height=p.h; im.style.height="auto"; }
+    bind(im,p.a);
+    im.onclick=()=>openLB(p.a,"Page "+p.page);
+    const n=document.createElement("div"); n.className="plate__n";
+    n.innerHTML="<span></span><span></span>";
+    n.children[0].textContent="Plate "+(i+1)+" of "+pl.length;
+    n.children[1].textContent="page "+p.page;
+    fig.append(im,n); L.append(fig);
   });
 }
 
@@ -2184,6 +2268,7 @@ $("#drop").addEventListener("drop",e=>{ e.preventDefault(); $("#drop").classList
 })();
 $("#backShelf").onclick=()=>route({v:"shelf"});
 $("#backIssue").onclick=()=>route({v:"issue", id:issue?issue.id:state.id});
+$("#backIssue2").onclick=()=>route({v:"issue", id:issue?issue.id:state.id});
 
 applyPrefs();
 history.replaceState({v:"shelf"},"",location.href);
