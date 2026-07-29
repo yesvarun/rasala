@@ -9,7 +9,7 @@
 <title>ਰਸਾਲਾ · Rasaala</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Archivo+Narrow:wght@400..700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gurmukhi:wght@400;600&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..600&family=Archivo+Narrow:wght@400..700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ────────────────────────────────────────────────────────────
    RASAALA — a press for turning magazine PDFs into mobile issues
@@ -221,7 +221,8 @@ img{max-width:100%;display:block}
   margin:0 0 26px}
 .read__body{font-family:var(--read-face);font-size:var(--read-size);line-height:1.62;
   text-align:var(--read-align);hyphens:var(--read-hyph);-webkit-hyphens:var(--read-hyph);
-  overflow-wrap:break-word;line-height:1.68;letter-spacing:.002em}
+  overflow-wrap:break-word;line-height:1.68;letter-spacing:.002em;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .read__body p{margin:0 0 .95em}
 .read__body p:last-child{margin-bottom:0}
 .read__body p.lead::first-letter{
@@ -316,6 +317,18 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
 .wd__ex{font-family:var(--body);font-style:italic;font-size:.9rem;color:var(--ink-3);
   padding-left:14px;margin:0 0 4px}
 .wd__hint{font-family:var(--util);font-size:.8rem;color:var(--ink-3);padding:18px 0}
+.tr{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--rule)}
+.tr__l{font-family:var(--util);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--red);flex:none;width:62px;padding-top:5px}
+.tr__t{flex:1;min-width:0}
+.tr__w{font-size:1.16rem;line-height:1.45}
+.tr__d{font-size:.86rem;line-height:1.5;color:var(--ink-2);margin-top:3px}
+.hi{font-family:"Noto Sans Devanagari",var(--body),sans-serif}
+.pa{font-family:"Noto Sans Gurmukhi",var(--body),sans-serif}
+.wd__acts{display:flex;gap:9px;margin-top:16px}
+.wd__acts .btn{flex:1;text-align:center}
+.study .wb__d,.study .tr__w,.study .tr__d{filter:blur(5px);transition:filter .15s}
+.study .wb.open .wb__d,.study .wb.open .tr__w,.study .wb.open .tr__d{filter:none}
 
 .toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 26px);transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:var(--paper);font-family:var(--util);font-size:.76rem;letter-spacing:.06em;
@@ -357,6 +370,7 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
       <svg class="icon" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
     <span class="bar__title">Wordbook</span>
+    <button class="wb__link" id="studyBtn">Study</button>
   </div>
   <div class="contents">
     <div class="contents__head">
@@ -506,7 +520,11 @@ figure.bleed figcaption{margin-left:var(--pad);margin-right:var(--pad)}
     <button class="wd__save" id="wdSave">Save</button>
   </div>
   <div id="wdBody"></div>
-  <button class="btn" id="wdDone" style="width:100%;text-align:center;margin-top:18px">Close</button>
+  <div id="wdTr"></div>
+  <div class="wd__acts">
+    <button class="btn btn--ghost" id="wdCopy">Copy</button>
+    <button class="btn" id="wdDone">Close</button>
+  </div>
 </div>
 
 <!-- ══ LIGHTBOX ═══════════════════════════════════════════ -->
@@ -625,6 +643,41 @@ function pageGutters(raw, W){
   return runs.filter(r=> r[1]>W*0.06 && r[0]<W*0.94).map(r=>(r[0]+r[1])/2);
 }
 
+/* Intra-word and inter-word gaps form two clusters. Otsu finds the valley
+   between them, so each magazine's own tracking sets the threshold. */
+function spaceWidth(raw){
+  const h=new Map();
+  for(const r of raw){ const k=Math.round(r.size*2)/2; if(k>=5&&k<=16) h.set(k,(h.get(k)||0)+r.s.length); }
+  let pb=10,bc=0; for(const [k,v] of h) if(v>bc){ bc=v; pb=k; }
+  const N=64, hist=new Uint32Array(N); let total=0;
+  const rows=new Map();
+  for(const r of raw){
+    if(r.size<pb*0.8 || r.size>pb*1.25) continue;
+    const k=Math.round(r.y*2);
+    if(!rows.has(k)) rows.set(k,[]);
+    rows.get(k).push(r);
+  }
+  for(const list of rows.values()){
+    list.sort((a,b)=>a.x-b.x);
+    for(let i=1;i<list.length;i++){
+      const g=(list[i].x-(list[i-1].x+list[i-1].w))/list[i].size;
+      if(g<0 || g>0.8) continue;
+      hist[Math.min(N-1, Math.floor(g/0.8*N))]++; total++;
+    }
+  }
+  if(total<160) return 0.26;
+  let sum=0; for(let i=0;i<N;i++) sum+=i*hist[i];
+  let sumB=0, wB=0, best=-1, at=Math.round(0.26/0.8*N);
+  for(let i=0;i<N;i++){
+    wB+=hist[i]; if(!wB) continue;
+    const wF=total-wB; if(!wF) break;
+    sumB+=i*hist[i];
+    const mB=sumB/wB, mF=(sum-sumB)/wF, v=wB*wF*(mB-mF)*(mB-mF);
+    if(v>best){ best=v; at=i; }
+  }
+  return clamp((at+0.5)/N*0.8, 0.15, 0.42);
+}
+
 function textRuns(items, vp){
   const raw=[];
   for(const it of items){
@@ -637,6 +690,7 @@ function textRuns(items, vp){
   }
   raw.sort((a,b)=> (a.y-b.y) || (a.x-b.x));
   const cuts=pageGutters(raw, vp.width);
+  const SP=spaceWidth(raw);
 
   /* bucket by baseline */
   const rows=[]; let cur=null;
@@ -653,20 +707,20 @@ function textRuns(items, vp){
       const p=run[run.length-1], n=row.it[i];
       const gap=n.x-(p.x+p.w), pr=p.x+p.w;
       const straddle=cuts.some(c=> pr<=c && c<=n.x);
-      if(straddle || gap > Math.max(p.size,n.size)*3.5) { out.push(mkLine(run)); run=[]; }
+      if(straddle || gap > Math.max(p.size,n.size)*3.5) { out.push(mkLine(run,SP)); run=[]; }
       run.push(n);
     }
-    out.push(mkLine(run));
+    out.push(mkLine(run,SP));
   }
   return out.filter(l=>l && l.text);
 }
 
-function mkLine(items){
+function mkLine(items, sp){
   if(!items.length) return null;
   const sizes=items.map(i=>i.size);
   const size=median(sizes);
   const gaps=[]; for(let i=1;i<items.length;i++) gaps.push(items[i].x-(items[i-1].x+items[i-1].w));
-  let thr=size*0.33;
+  let thr=size*(sp||0.26);
   /* letter-spaced display type is left alone here and mended later by
      mkRepair(), which has the whole issue's vocabulary to work with */
   let t=items[0].s;
@@ -791,7 +845,7 @@ function makeBlock(lines0, body){
   for(const l of lines0){
     const p=lines[lines.length-1];
     if(p && Math.abs(l.y-p.y)<=Math.max(1.2, Math.min(l.size,p.size)*0.45)){
-      p.text += (l.x-p.r > l.size*0.25 ? " " : "") + l.text;
+      p.text += (l.x-p.r > l.size*0.22 ? " " : "") + l.text;
       p.r=Math.max(p.r,l.r);
       p.bold=p.bold||l.bold; p.italic=p.italic||l.italic;
       continue;
@@ -839,6 +893,12 @@ function tidy(t){
     .replace(/\s+([,.;:!?%’”\)\]])/g,"$1")
     .replace(/([“\(\[])\s+/g,"$1")
     .replace(/(\p{L})\s+’\s*(\p{L})/gu,"$1’$2")
+    .replace(/(\p{L})-\s+(\p{Ll})/gu,"$1$2")          /* gov- ernment */
+    .replace(/\b(\p{L}{2,})\s+\1\b/giu,"$1")           /* the the */
+    .replace(/([.,;:!?])(\p{L})/gu,"$1 $2")           /* word.Next */
+    .replace(/\s+([%’”\)\]])/g,"$1")
+    .replace(/\(\s+/g,"(")
+    .replace(/\s+-\s+/g," – ")
     .replace(/\s{2,}/g," ")
     .trim();
 }
@@ -937,7 +997,46 @@ function mkRepair(v){
       }
       out.push(parts[i]); i++;
     }
-    let cur=out;
+    /* run-together words: only ever split a token that appears nowhere
+       else in the issue on its own, and never at a suffix boundary */
+    const MORPH=new Set(("ing ings ed es ers er est ion ions ous ive ial ate ist ism ity ent "+
+      "ant ard age ful less ness ment tion able ible ally ance ence ship hood ward wise ise ize").split(" "));
+    /* closed compounds are real words, however tempting the split looks */
+    const WHOLE=new Set(("anyone anybody anything anywhere anyway anytime someone somebody "+
+      "something somewhere somehow sometimes sometime everyone everybody everything everywhere "+
+      "everyday nothing nobody nowhere cannot into onto upon within without whatever whenever "+
+      "wherever whoever however whereas whereby therefore thereby moreover otherwise meanwhile "+
+      "nevertheless nonetheless alongside throughout together tonight today tomorrow yesterday "+
+      "understand understanding background backdrop backlash breakdown breakthrough feedback "+
+      "forever headline highlight income indeed instead itself himself herself myself yourself "+
+      "ourselves themselves keyboard landmark lifetime likewise network networks newspaper "+
+      "newspapers notebook offline online outcome outlook output outside overall overcome "+
+      "overseas password percent platform powerful railway roadmap showcase software hardware "+
+      "somewhat spotlight standpoint statewide nationwide worldwide timeline township upgrade "+
+      "viewpoint weekend welcome workshop workforce worthwhile widespread mainstream framework "+
+      "benchmark landscape leadership lockdown handover takeover turnover crackdown shutdown "+
+      "setback fallout rollout airport aircraft airline household homeland homepage inside "+
+      "became become because before behind between beyond whether almost already although "+
+      "always another anymore whatsoever moreover downtown uptown grassroots").split(" "));
+    const HEAD=new Set("any some every no there here where what when who how out over under back self".split(" "));
+    const split=[];
+    for(const tok of out){
+      const c=core(tok);
+      if(c.length>=6 && (v.get(c.toLowerCase())||0)<=1 && !WHOLE.has(c.toLowerCase())){
+        const pieces=segment(c.toLowerCase());
+        let fine = pieces.length>=2 && pieces.length<=3;
+        if(fine && HEAD.has(pieces[0]) && c.length<=13) fine=false;
+        if(fine) for(const pc of pieces)
+          if(pc.length<3 || !known(pc,4) || MORPH.has(pc)){ fine=false; break; }
+        if(fine){
+          let pos=0;
+          for(const pc of pieces){ split.push(c.slice(pos,pos+pc.length)); pos+=pc.length; }
+          continue;
+        }
+      }
+      split.push(tok);
+    }
+    let cur=split;
     for(let pass=0;pass<2;pass++){                 /* F I LMS → FI LMS → FILMS */
       const res=[];
       for(let i=0;i<cur.length;){
@@ -1877,6 +1976,41 @@ async function lookup(k){
   try{ await DB.putDef(out); }catch(e){}
   return out;
 }
+async function translate(text, to){
+  const t=String(text||"").trim();
+  if(!t) return "";
+  const ck="tr:"+to+":"+t.toLowerCase().slice(0,120);
+  try{ const c=await DB.getDef(ck); if(c && c.t!==undefined) return c.t; }catch(e){}
+  let out="";
+  try{
+    const r=await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl="+
+      to+"&dt=t&q="+encodeURIComponent(t));
+    if(r.ok){ const j=await r.json();
+      out=((j&&j[0])||[]).map(x=>x&&x[0]).filter(Boolean).join("").trim(); }
+  }catch(e){}
+  if(!out) try{
+    const r=await fetch("https://api.mymemory.translated.net/get?langpair=en%7C"+to+
+      "&q="+encodeURIComponent(t));
+    if(r.ok){ const j=await r.json(); const c=(j.responseData||{}).translatedText||"";
+      if(c && !/^MYMEMORY WARNING/i.test(c)) out=c.trim(); }
+  }catch(e){}
+  if(out){ try{ await DB.putDef({w:ck, t:out}); }catch(e){} }
+  return out;
+}
+function renderTr(d){
+  const T=$("#wdTr"); T.innerHTML="";
+  const row=(label,cls,word,def)=>{
+    if(!word && !def) return;
+    const r=document.createElement("div"); r.className="tr";
+    const l=document.createElement("span"); l.className="tr__l "+cls; l.textContent=label;
+    const b=document.createElement("div"); b.className="tr__t";
+    if(word){ const w=document.createElement("div"); w.className="tr__w "+cls; w.textContent=word; b.append(w); }
+    if(def){ const x=document.createElement("div"); x.className="tr__d "+cls; x.textContent=def; b.append(x); }
+    r.append(l,b); T.append(r);
+  };
+  row("हिन्दी","hi",d.hi,d.hiDef);
+  row("ਪੰਜਾਬੀ","pa",d.pa,d.paDef);
+}
 function renderSenses(d){
   const B=$("#wdBody"); B.innerHTML="";
   if(!d.senses || !d.senses.length){ B.innerHTML='<p class="wd__hint">No definition found.</p>'; return; }
@@ -1891,24 +2025,44 @@ async function openWord(raw){
   if(k.length<2) return;
   $("#wdW").textContent=raw; $("#wdP").textContent="";
   $("#wdBody").innerHTML='<p class="wd__hint">Looking it up…</p>';
+  $("#wdTr").innerHTML="";
   $("#wdSave").disabled=true; $("#wdSave").textContent="Save";
   openSheet("#wordSheet");
-  curWord={w:k, display:raw, phon:"", senses:[]};
-  let shown=false;
-  try{
-    const d=await lookup(k);
-    curWord=d; shown=true;
-    $("#wdW").textContent=d.display||raw; $("#wdP").textContent=d.phon||"";
-    renderSenses(d);
-  }catch(err){
-    const saved=await DB.getWord(k).catch(()=>null);
-    if(saved){ curWord=saved; $("#wdP").textContent=saved.phon||""; renderSenses(saved); shown=true; }
-    else $("#wdBody").innerHTML='<p class="wd__hint">'+esc(err.message||"Couldn’t look that up")+"</p>";
+  const saved=await DB.getWord(k).catch(()=>null);
+  curWord=saved || {w:k, display:raw, phon:"", senses:[]};
+
+  const defP=lookup(k).then(d=>d).catch(e=>({err:e.message||"Couldn’t look that up"}));
+  const hiP=translate(k,"hi"), paP=translate(k,"pa");
+
+  const d=await defP;
+  if(!d.err){ curWord=Object.assign({}, saved||{}, d); }
+  if(curWord.senses && curWord.senses.length){
+    $("#wdW").textContent=curWord.display||raw;
+    $("#wdP").textContent=curWord.phon||"";
+    renderSenses(curWord);
+  } else {
+    $("#wdBody").innerHTML='<p class="wd__hint">'+esc(d.err||"No definition found")+"</p>";
   }
-  const have=await DB.getWord(k).catch(()=>null);
-  $("#wdSave").textContent = have ? "Saved" : "Save";
-  $("#wdSave").disabled = !!have || !shown;
+  const first=(((curWord.senses||[])[0]||{}).defs||[])[0]||"";
+  const [hi,pa,hiDef,paDef]=await Promise.all([
+    hiP, paP,
+    first ? translate(first.slice(0,180),"hi") : Promise.resolve(""),
+    first ? translate(first.slice(0,180),"pa") : Promise.resolve("")
+  ]);
+  curWord.hi=hi||curWord.hi||""; curWord.pa=pa||curWord.pa||"";
+  curWord.hiDef=hiDef||curWord.hiDef||""; curWord.paDef=paDef||curWord.paDef||"";
+  renderTr(curWord);
+  const usable=(curWord.senses||[]).length || curWord.hi || curWord.pa;
+  $("#wdSave").textContent = saved ? "Saved" : "Save";
+  $("#wdSave").disabled = !!saved || !usable;
 }
+$("#wdCopy").onclick=()=>{
+  if(!curWord) return;
+  const first=(((curWord.senses||[])[0]||{}).defs||[])[0]||"";
+  const t=[curWord.display||curWord.w, first, curWord.hi, curWord.pa].filter(Boolean).join(" — ");
+  (navigator.clipboard? navigator.clipboard.writeText(t) : Promise.reject())
+    .then(()=>toast("Copied")).catch(()=>toast("Couldn’t copy"));
+};
 $("#wdSave").onclick=async()=>{
   if(!curWord) return;
   const rec=Object.assign({},curWord,{src:curSrc||"", at:Date.now()});
@@ -1920,12 +2074,20 @@ $("#wdDone").onclick=()=>history.back();
 $("#openWords").onclick=()=>route({v:"words"});
 $("#backShelf2").onclick=()=>route({v:"shelf"});
 
+let studyMode=false;
+$("#studyBtn").onclick=()=>{
+  studyMode=!studyMode;
+  $("#v-words").classList.toggle("study", studyMode);
+  $("#studyBtn").textContent = studyMode ? "Show all" : "Study";
+  if(studyMode) toast("Meanings hidden — tap a card to reveal");
+};
 async function renderWordbook(){
   const L=$("#wbList"); L.innerHTML="";
   let all=[]; try{ all=await DB.allWords(); }catch(e){}
   all.sort((a,b)=>b.at-a.at);
-  $("#wbM").textContent = all.length ? all.length+" word"+(all.length===1?"":"s")+" kept"
-    : "Tap any word while reading to look it up and keep it.";
+  $("#wbM").textContent = all.length
+    ? all.length+" word"+(all.length===1?"":"s")+" kept · tap Study to hide the meanings and test yourself"
+    : "Press and hold any word while reading to look it up, hear its meaning in Hindi and Punjabi, and keep it here.";
   if(!all.length){ L.innerHTML='<p class="empty">Nothing kept yet.</p>'; return; }
   for(const rec of all){
     const row=document.createElement("div"); row.className="wb";
@@ -1933,17 +2095,36 @@ async function renderWordbook(){
     const w=document.createElement("div"); w.className="wb__w"; w.textContent=rec.display||rec.w;
     b.append(w);
     if(rec.phon){ const p=document.createElement("div"); p.className="wb__p"; p.textContent=rec.phon; b.append(p); }
-    const first=(rec.senses||[])[0];
+    const first=(((rec.senses||[])[0]||{}).defs||[])[0]||"";
+    const pos=((rec.senses||[])[0]||{}).pos||"";
     if(first){
       const d=document.createElement("div"); d.className="wb__d";
-      d.textContent=(first.pos? first.pos+" · ":"")+((first.defs||[])[0]||"");
-      b.append(d);
+      d.textContent=(pos? pos+" · ":"")+first; b.append(d);
     }
+    if(rec.hi){ const h=document.createElement("div"); h.className="wb__d hi";
+      h.textContent="हिन्दी · "+rec.hi+(rec.hiDef? " — "+rec.hiDef : ""); b.append(h); }
+    if(rec.pa){ const g=document.createElement("div"); g.className="wb__d pa";
+      g.textContent="ਪੰਜਾਬੀ · "+rec.pa+(rec.paDef? " — "+rec.paDef : ""); b.append(g); }
     if(rec.src){ const sc=document.createElement("div"); sc.className="wb__s"; sc.textContent=rec.src; b.append(sc); }
     const x=document.createElement("button"); x.className="wb__x"; x.textContent="Remove";
-    x.onclick=async()=>{ await DB.dropWord(rec.w); renderWordbook(); toast("Removed"); };
-    row.append(b,x); L.append(row);
+    x.onclick=async e=>{ e.stopPropagation(); await DB.dropWord(rec.w); renderWordbook(); toast("Removed"); };
+    row.append(b,x);
+    row.onclick=()=>{ if(studyMode) row.classList.toggle("open"); };
+    L.append(row);
   }
+  const exp=document.createElement("button");
+  exp.className="btn btn--ghost";
+  exp.style.cssText="width:100%;text-align:center;margin-top:22px";
+  exp.textContent="Copy all for study";
+  exp.onclick=()=>{
+    const txt=all.map(r=>{
+      const d=(((r.senses||[])[0]||{}).defs||[])[0]||"";
+      return [r.display||r.w, d, r.hi, r.pa].filter(Boolean).join("  —  ");
+    }).join("\n");
+    (navigator.clipboard? navigator.clipboard.writeText(txt) : Promise.reject())
+      .then(()=>toast(all.length+" words copied")).catch(()=>toast("Couldn’t copy"));
+  };
+  L.append(exp);
 }
 
 /* ── settings sheet ──────────────────────────────────────── */
@@ -1980,13 +2161,27 @@ $("#drop").addEventListener("dragover",e=>{e.preventDefault();$("#drop").classLi
 $("#drop").addEventListener("dragleave",()=>$("#drop").classList.remove("hot"));
 $("#drop").addEventListener("drop",e=>{ e.preventDefault(); $("#drop").classList.remove("hot");
   startPress(e.dataTransfer.files[0]); });
-$("#readBody").addEventListener("click", e=>{
-  if(e.target.closest("figure")) return;
-  const sel=window.getSelection();
-  if(sel && String(sel).trim().length>1) return;       /* the reader is selecting text */
-  const w=wordAt(e.clientX, e.clientY);
-  if(w) openWord(w);
-});
+(function longPress(){
+  const B=$("#readBody");
+  let timer=null, at=null;
+  const cancel=()=>{ clearTimeout(timer); timer=null; at=null; };
+  B.addEventListener("pointerdown", e=>{
+    if(e.target.closest("figure")) return;
+    at={x:e.clientX, y:e.clientY};
+    clearTimeout(timer);
+    timer=setTimeout(()=>{
+      if(!at) return;
+      const w=wordAt(at.x, at.y);
+      cancel();
+      if(w){ if(navigator.vibrate) try{navigator.vibrate(12);}catch(err){} openWord(w); }
+    }, 450);
+  }, {passive:true});
+  B.addEventListener("pointermove", e=>{
+    if(at && Math.hypot(e.clientX-at.x, e.clientY-at.y)>10) cancel();
+  }, {passive:true});
+  ["pointerup","pointercancel","pointerleave"].forEach(t=>
+    B.addEventListener(t, cancel, {passive:true}));
+})();
 $("#backShelf").onclick=()=>route({v:"shelf"});
 $("#backIssue").onclick=()=>route({v:"issue", id:issue?issue.id:state.id});
 
