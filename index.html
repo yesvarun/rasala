@@ -691,7 +691,7 @@ function spaceWidth(raw){
       hist[Math.min(N-1, Math.floor(g/0.8*N))]++; total++;
     }
   }
-  if(total<160) return 0.26;
+  if(total<160) return {sp:0.26, pb};
   let sum=0; for(let i=0;i<N;i++) sum+=i*hist[i];
   let sumB=0, wB=0, best=-1, at=Math.round(0.26/0.8*N);
   for(let i=0;i<N;i++){
@@ -701,7 +701,7 @@ function spaceWidth(raw){
     const mB=sumB/wB, mF=(sum-sumB)/wF, v=wB*wF*(mB-mF)*(mB-mF);
     if(v>best){ best=v; at=i; }
   }
-  return clamp((at+0.5)/N*0.8, 0.15, 0.42);
+  return {sp:clamp((at+0.5)/N*0.8, 0.06, 0.40), pb};
 }
 
 function textRuns(items, vp){
@@ -716,7 +716,7 @@ function textRuns(items, vp){
   }
   raw.sort((a,b)=> (a.y-b.y) || (a.x-b.x));
   const cuts=pageGutters(raw, vp.width);
-  const SP=spaceWidth(raw);
+  const SPX=spaceWidth(raw);
 
   /* bucket by baseline */
   const rows=[]; let cur=null;
@@ -733,20 +733,46 @@ function textRuns(items, vp){
       const p=run[run.length-1], n=row.it[i];
       const gap=n.x-(p.x+p.w), pr=p.x+p.w;
       const straddle=cuts.some(c=> pr<=c && c<=n.x);
-      if(straddle || gap > Math.max(p.size,n.size)*3.5) { out.push(mkLine(run,SP)); run=[]; }
+      if(straddle || gap > Math.max(p.size,n.size)*3.5) { out.push(mkLine(run,SPX)); run=[]; }
       run.push(n);
     }
-    out.push(mkLine(run,SP));
+    out.push(mkLine(run,SPX));
   }
   return out.filter(l=>l && l.text);
 }
 
-function mkLine(items, sp){
+/* Sorted gaps with one clear jump mean tracked letters plus real word
+   spaces. No jump means the whole line is one tracked word. */
+function trackedSplit(gs){
+  const v=gs.slice().sort((a,b)=>a-b);
+  if(v.length<3) return null;
+  let j1=0,j2=0,at=-1;
+  for(let i=1;i<v.length;i++){
+    const d=v[i]-v[i-1];
+    if(d>j1){ j2=j1; j1=d; at=i; } else if(d>j2) j2=d;
+  }
+  if(at<0 || j1<0.12 || j1<j2*2) return null;
+  return (v[at]+v[at-1])/2;
+}
+function mkLine(items, spx){
+  const sp=(spx&&spx.sp)||0.26, pb=(spx&&spx.pb)||10;
   if(!items.length) return null;
   const sizes=items.map(i=>i.size);
   const size=median(sizes);
   const gaps=[]; for(let i=1;i<items.length;i++) gaps.push(items[i].x-(items[i-1].x+items[i-1].w));
-  let thr=size*(sp||0.26);
+  let thr=size*sp;
+  const tiny=items.filter(i=>i.s.trim().length<=2).length;
+  if(items.length>=4 && size>=pb*1.15 && tiny/items.length>0.55){
+    const gs=[];
+    for(let i=1;i<items.length;i++){
+      const g=(items[i].x-(items[i-1].x+items[i-1].w))/size;
+      if(g>=0 && g<1.6) gs.push(g);
+    }
+    if(gs.length>=3 && median(gs)>=0.08){
+      const t=trackedSplit(gs);
+      thr = t!==null ? size*t : size*4;      /* no jump: GLASSHOUSE, not GL ASSHOUSE */
+    }
+  }
   /* letter-spaced display type is left alone here and mended later by
      mkRepair(), which has the whole issue's vocabulary to work with */
   let t=items[0].s;
@@ -871,7 +897,7 @@ function makeBlock(lines0, body){
   for(const l of lines0){
     const p=lines[lines.length-1];
     if(p && Math.abs(l.y-p.y)<=Math.max(1.2, Math.min(l.size,p.size)*0.45)){
-      p.text += (l.x-p.r > l.size*0.22 ? " " : "") + l.text;
+      p.text += (l.x-p.r > l.size*0.12 ? " " : "") + l.text;
       p.r=Math.max(p.r,l.r);
       p.bold=p.bold||l.bold; p.italic=p.italic||l.italic;
       continue;
@@ -1052,8 +1078,15 @@ function mkRepair(v){
         const pieces=segment(c.toLowerCase());
         let fine = pieces.length>=2 && pieces.length<=3;
         if(fine && HEAD.has(pieces[0]) && c.length<=13) fine=false;
-        if(fine) for(const pc of pieces)
-          if(pc.length<3 || !known(pc,4) || MORPH.has(pc)){ fine=false; break; }
+        if(fine){
+          let at=0;
+          for(const pc of pieces){
+            const src=c.slice(at,at+pc.length); at+=pc.length;
+            const initials = pc.length>=2 && pc.length<=4 && src===src.toUpperCase();
+            const word = pc.length>=3 && known(pc, pc.length>=6?2:4) && !MORPH.has(pc);
+            if(!initials && !word){ fine=false; break; }
+          }
+        }
         if(fine){
           let pos=0;
           for(const pc of pieces){ split.push(c.slice(pos,pos+pc.length)); pos+=pc.length; }
@@ -1200,6 +1233,25 @@ const Press = {
         runs.push(run);
       }
       pg.blocks=runs.filter(r=>r.length).map(g=>makeBlock(g, pg.body)).filter(b=>b.text.length>1);
+      for(let bi=0;bi<pg.blocks.length;bi++){
+        const dc=pg.blocks[bi];
+        if(dc.text.length>2 || dc.size < pg.body*1.9) continue;
+        let best=null, bd=1e9;
+        for(const t of pg.blocks){
+          if(t===dc || t.text.length<12) continue;
+          if(t.left <= dc.left+1) continue;                    /* must sit to its right */
+          if(t.top > dc.bottom+2 || t.bottom < dc.top-2) continue;  /* and beside it */
+          const dx=t.left-dc.left;
+          if(dx > dc.size*2.4) continue;
+          const score=Math.abs(t.top-dc.top)+dx*0.2;
+          if(score<bd){ bd=score; best=t; }
+        }
+        if(best){
+          best.text = dc.text + best.text;
+          if(best.lines && best.lines[0]) best.lines[0].text = dc.text + best.lines[0].text;
+          pg.blocks.splice(bi,1); bi--;
+        }
+      }
       const display=pg.blocks.filter(b=> b.size>=pg.body*1.6 && words(b.text)>=2
         && b.text.length>=8 && b.top<pg.h*0.8);
       const jumps=pg.lines.filter(l=>/\b(pg|page)\.?\s?\d{1,3}\b/i.test(l.text)).length;
